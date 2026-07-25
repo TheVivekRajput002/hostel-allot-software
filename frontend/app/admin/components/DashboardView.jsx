@@ -81,18 +81,13 @@ export default function DashboardView({
   return (
     <div className="space-y-6">
       {/* Top Banner Notice */}
-      <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs text-amber-900 flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold">Official Directive:</span> Admin hostel room capacity forms and admission list uploads directly affect the automatic merit allocation process. Ensure all empty room counts are accurate before closing the session.
-        </div>
-      </div>
+      
 
       {/* METRIC CARDS */}
       <div>
         <div className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2 border-b border-slate-300 pb-1.5">
           <ShieldCheck className="w-4 h-4 text-[#0f2c59]" />
-          <span>Section A: Key Allotment Statistics & Summary</span>
+          <span>Key Allotment Statistics & Summary</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -153,11 +148,8 @@ export default function DashboardView({
           <div>
             <h2 className="text-sm md:text-base font-bold flex items-center gap-2">
               <Building2 className="w-5 h-5 text-amber-400" />
-              Section B: Hostel Wise Available Empty Rooms Data Entry
+                 Hostel Wise Available Empty Rooms Data Entry
             </h2>
-            <p className="text-xs text-slate-300">
-              Fill empty room counts for Boys Hostels (H1 to H8) and Girls Hostels (H1 to H3)
-            </p>
           </div>
 
           {/* Save Status alert if any */}
@@ -224,7 +216,7 @@ export default function DashboardView({
                       <th className="p-2.5 border-r border-slate-300">Hostel Name & Block</th>
                       <th className="p-2.5 border-r border-slate-300">Total Rooms</th>
                       <th className="p-2.5 border-r border-slate-300">Current Occupied</th>
-                      <th className="p-2.5 border-r border-slate-300 bg-amber-100 text-amber-900">Available Empty Rooms (Fill Here)</th>
+                      <th className="p-2.5 border-r border-slate-300 bg-amber-100 text-amber-900">Available Empty Rooms</th>
                       <th className="p-2.5">Warden / Contact</th>
                     </tr>
                   </thead>
@@ -348,7 +340,7 @@ export default function DashboardView({
         <div className="bg-[#0b2545] text-white px-4 py-3 border-b border-[#1e3a8a]">
           <h2 className="text-sm md:text-base font-bold flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-amber-400" />
-            Section C: Admission Data Submission (Excel Format)
+             Admission Data Submission (Excel Format)
           </h2>
           <p className="text-xs text-slate-300">
             Submit newly admitted students list in official Excel format (.xlsx / .csv) for verification and hostel mapping

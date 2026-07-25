@@ -88,8 +88,8 @@ export default function AdminSidebar({ activeTab, setActiveTab, metrics }) {
 
       {/* Footer Govt badge */}
       <div className="p-3 border-t border-[#1e3a8a] bg-[#071326] text-[11px] text-slate-400 text-center space-y-1">
-        <div className="font-semibold text-slate-300">National Informatics Centre</div>
-        <div className="text-[10px] text-slate-500">Hostel Allocation Division • Govt of India</div>
+        <div className="font-semibold text-slate-300">Jabalpur Engineering College</div>
+        <div className="text-[10px] text-slate-500">Hostel Allocation Portal • Department of Information Technology</div>
       </div>
     </aside>
   );
