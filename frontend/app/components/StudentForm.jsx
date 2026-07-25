@@ -51,9 +51,10 @@ export default function StudentForm() {
     'Electrical Engineering',
     'Mechanical Engineering',
     'Civil Engineering',
-    'Chemical Engineering',
+    'Mechatronics Engineering',
     'Information Technology',
-    'Data Science & AI'
+    'AI & Data Science',
+    'Industrial & Production Engineering'
   ];
 
   const categories = [
@@ -224,7 +225,7 @@ export default function StudentForm() {
 
           {/* Submission Details Summary */}
           <div className="p-6 rounded-xl mb-8 space-y-4" style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-            <h3 className="font-bold text-base flex items-center gap-2 border-b pb-3" style={{ color: 'var(--text-main)', borderColor: 'var(--border)' }}>
+            <h3 className="font-bold text-base flex items-center gap-2 pb-3" style={{ color: 'var(--text-main)', borderColor: 'var(--border)' }}>
               <ShieldCheck className="w-5 h-5" style={{ color: 'var(--primary)' }} />
               Submitted Application Summary
             </h3>
@@ -291,9 +292,13 @@ export default function StudentForm() {
       <div className="card-container mb-8 overflow-hidden">
         <div className="p-6 sm:p-8" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', color: '#ffffff' }}>
           <div className="flex items-center gap-3 mb-2">
-            <span className="p-2 rounded-lg bg-white/10 backdrop-blur-sm">
-              <Building2 className="w-6 h-6 text-white" />
-            </span>
+            <span className="p-2 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
+  <img
+    src="/jec_logo.png"
+    alt="College Logo"
+    className="w-8 h-8 object-contain"
+  />
+</span>
             <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full text-white">
               Academic Session 2026-27
             </span>
@@ -307,20 +312,15 @@ export default function StudentForm() {
         </div>
 
         {/* Process Info Note */}
-        <div className="p-4 sm:px-8 flex items-start gap-3 border-b text-xs sm:text-sm" style={{ backgroundColor: 'var(--primary-light)', borderColor: 'var(--primary-border)', color: 'var(--text-main)' }}>
-          <Info className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--primary)' }} />
-          <div>
-            <strong>Notice on Submission & Email Notifications:</strong> Upon submitting this form, you will receive an <em>acknowledgement email receipt</em>. Final room allotment is merit-based and will be emailed separately after admin verification.
-          </div>
-        </div>
+        
       </div>
 
       {/* Main Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
-        
+        <div className="card-container p-6 sm:p-8 space-y-10">
         {/* Section 1: Personal Details */}
-        <div className="card-container p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="pt-10">
+          <div className="flex items-center gap-3 pb-4" style={{ borderColor: 'var(--border)' }}>
             <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
               <User className="w-5 h-5" />
             </div>
@@ -333,7 +333,7 @@ export default function StudentForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Full Name */}
             <div className="space-y-1.5 sm:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#1f2937' }}>
                 Full Name <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
@@ -341,7 +341,7 @@ export default function StudentForm() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="e.g. Aarav Sharma"
+                placeholder="e.g. Aman Dwivedi"
                 className="w-full px-4 py-2.5 text-sm form-input"
               />
               {errors.fullName && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.fullName}</p>}
@@ -349,7 +349,7 @@ export default function StudentForm() {
 
             {/* Gender */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#1f2937' }}>
                 Gender <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <select
@@ -361,14 +361,13 @@ export default function StudentForm() {
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Other">Other</option>
               </select>
               {errors.gender && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.gender}</p>}
             </div>
 
             {/* Category */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#1f2937' }}>
                 Category <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <select
@@ -403,8 +402,8 @@ export default function StudentForm() {
         </div>
 
         {/* Section 2: Academic Details */}
-        <div className="card-container p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="border-t pt-8">
+          <div className="flex items-center gap-3 pb-4" style={{ borderColor: 'var(--border)' }}>
             <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
               <GraduationCap className="w-5 h-5" />
             </div>
@@ -471,8 +470,8 @@ export default function StudentForm() {
         </div>
 
         {/* Section 3: Contact & Guardian Information */}
-        <div className="card-container p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="border-t pt-8">
+          <div className="flex items-center gap-3 pb-4" style={{ borderColor: 'var(--border)' }}>
             <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
               <Mail className="w-5 h-5" />
             </div>
@@ -601,7 +600,7 @@ export default function StudentForm() {
         </div>
 
         {/* Declaration & Submission */}
-        <div className="card-container p-6 sm:p-8 space-y-6">
+        <div className="border-t pt-8">
           <div className="flex items-start gap-3">
             <input
               type="checkbox"
@@ -642,6 +641,7 @@ export default function StudentForm() {
               )}
             </button>
           </div>
+        </div>
         </div>
       </form>
     </div>

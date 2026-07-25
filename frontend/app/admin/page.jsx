@@ -82,10 +82,10 @@ export default function AdminPage() {
       <footer className="bg-[#0b2545] text-slate-300 border-t border-[#1e3a8a] py-4 text-xs text-center">
         <div className="max-w-6xl mx-auto px-4 space-y-1">
           <p className="font-semibold text-white">
-            राष्ट्रीय छात्रावास आवंटन पोर्टल | National Hostel Allotment Portal
+            जबलपुर इंजीनियरिंग कॉलेज | Jabalpur Engineering College, Jabalpur (M.P.) - 482011
           </p>
           <p className="text-[11px] text-slate-400">
-            Designed & Maintained by National Informatics Centre (NIC) for Academic Institutions & Hostel Administration.
+            Designed & Maintained by Jabalpur Engineering College.
           </p>
         </div>
       </footer>

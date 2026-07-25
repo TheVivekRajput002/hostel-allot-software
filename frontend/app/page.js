@@ -8,9 +8,15 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b backdrop-blur-md bg-white/90" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)' }}>
-              <Building2 className="w-6 h-6" />
-            </div>
+            <div
+  className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white"
+>
+  <img
+    src="/jec_logo.png"
+    alt="College Logo"
+    className="w-8 h-8 object-contain"
+  />
+</div>
             <div>
               <span className="font-bold text-base tracking-tight block" style={{ color: 'var(--text-main)' }}>
                 Hostel Allotment Portal
