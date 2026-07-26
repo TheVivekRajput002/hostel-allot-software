@@ -6,6 +6,7 @@ import AdminSidebar from './components/AdminSidebar';
 import DashboardView from './components/DashboardView';
 import StudentListView from './components/StudentListView';
 import StudentDetailModal from './components/StudentDetailModal';
+import AllotmentListView from './components/AllotmentListView';
 
 // Import initial dummy data
 import { 
@@ -60,21 +61,29 @@ export default function AdminPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-          {activeTab === 'dashboard' ? (
-            <DashboardView
-              metrics={metrics}
-              hostelsData={hostelsData}
-              setHostelsData={setHostelsData}
-              excelUploads={excelUploads}
-              setExcelUploads={setExcelUploads}
-            />
-          ) : (
-            <StudentListView
-              studentList={studentList}
-              setStudentList={setStudentList}
-              onSelectStudent={(student) => setSelectedStudent(student)}
-            />
-          )}
+          {activeTab === 'dashboard' && (
+  <DashboardView
+    metrics={metrics}
+    hostelsData={hostelsData}
+    setHostelsData={setHostelsData}
+    excelUploads={excelUploads}
+    setExcelUploads={setExcelUploads}
+  />
+)}
+
+{activeTab === 'student-list' && (
+  <StudentListView
+    studentList={studentList}
+    setStudentList={setStudentList}
+    onSelectStudent={(student) => setSelectedStudent(student)}
+  />
+)}
+
+{activeTab === 'allotment-list' && (
+  <AllotmentListView
+    studentList={studentList}
+  />
+)}
         </main>
       </div>
 

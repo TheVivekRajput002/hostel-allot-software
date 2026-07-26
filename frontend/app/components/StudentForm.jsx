@@ -515,54 +515,6 @@ export default function StudentForm() {
               {errors.mobile && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.mobile}</p>}
             </div>
 
-            {/* Guardian Name */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Parent / Guardian Name <span style={{ color: 'var(--error)' }}>*</span>
-              </label>
-              <input
-                type="text"
-                name="guardianName"
-                value={formData.guardianName}
-                onChange={handleChange}
-                placeholder="e.g. Rajesh Sharma"
-                className="w-full px-4 py-2.5 text-sm form-input"
-              />
-              {errors.guardianName && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.guardianName}</p>}
-            </div>
-
-            {/* Guardian Mobile */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Parent / Guardian Mobile <span style={{ color: 'var(--error)' }}>*</span>
-              </label>
-              <input
-                type="tel"
-                name="guardianMobile"
-                value={formData.guardianMobile}
-                onChange={handleChange}
-                placeholder="10-digit mobile number"
-                className="w-full px-4 py-2.5 text-sm form-input"
-              />
-              {errors.guardianMobile && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.guardianMobile}</p>}
-            </div>
-
-            {/* Address */}
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Permanent Address <span style={{ color: 'var(--error)' }}>*</span>
-              </label>
-              <textarea
-                name="address"
-                rows={2}
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Enter complete residential address"
-                className="w-full px-4 py-2.5 text-sm form-input"
-              />
-              {errors.address && <p className="text-xs font-medium error-message" style={{ color: 'var(--error)' }}>{errors.address}</p>}
-            </div>
-
             {/* State */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>

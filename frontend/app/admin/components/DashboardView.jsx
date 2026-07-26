@@ -189,14 +189,7 @@ export default function DashboardView({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveHostelRooms}
-            className="px-4 py-2 text-xs font-bold bg-[#166534] hover:bg-[#14532d] text-white rounded border border-[#14532d] flex items-center gap-1.5 shadow-sm"
-          >
-            <Save className="w-4 h-4" />
-            Save Room Availability Data
-          </button>
+          
         </div>
 
         {/* Form Body */}

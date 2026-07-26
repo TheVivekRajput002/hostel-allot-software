@@ -1,9 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Search, Filter, CheckCircle2, Clock, ShieldAlert, User, 
-  MapPin, GraduationCap, Award, FileText, Check, Eye, ChevronDown, RotateCcw
+import {
+  Search,
+  Filter,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
+  ShieldCheck,
+  User,
+  MapPin,
+  GraduationCap,
+  Award,
+  FileText,
+  Check,
+  Eye,
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 
 export default function StudentListView({ 
@@ -38,6 +51,12 @@ export default function StudentListView({
     setGenderFilter('ALL');
     setCategoryFilter('ALL');
   };
+
+  const handleSendForVerification = () => {
+  console.log("Send For Verification clicked");
+
+  // Later you'll call your backend API here.
+};
 
   return (
     <div className="space-y-6">
@@ -159,7 +178,8 @@ export default function StudentListView({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+  <>
+        <div className="grid grid-cols-1 gap-4">
           {filteredStudents.map((student) => {
             const isVerified = student.status === 'Verified';
 
@@ -203,7 +223,7 @@ export default function StudentListView({
 
                 {/* Card Details Grid */}
                 <div className="p-4 space-y-3 flex-1 text-xs text-slate-700">
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100/60 p-2.5 rounded border border-slate-200">
+                  <div className="grid grid-col gap-2 bg-slate-100/60 p-2.5 rounded border border-slate-200">
                     <div>
                       <span className="text-slate-500 block text-[10px] uppercase font-semibold">Department & Program</span>
                       <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
@@ -266,8 +286,22 @@ export default function StudentListView({
               </div>
             );
           })}
+          <div className="mt-8 flex justify-center">
+  <button
+    type="button"
+    onClick={handleSendForVerification}
+    className="w-72 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0f2c59] hover:bg-[#163d78] text-white font-bold rounded-lg shadow-md transition-all"
+  >
+    <ShieldCheck className="w-5 h-5" />
+    Send For Verification
+  </button>
+</div>
+
         </div>
-      )}
+        </>
+)}
     </div>
+    
+    
   );
 }
