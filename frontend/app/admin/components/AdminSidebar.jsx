@@ -1,7 +1,16 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, Users, Building, FileSpreadsheet, ShieldAlert, CheckCircle2, ChevronRight } from 'lucide-react';
+import {
+LayoutDashboard,
+Users,
+Building,
+Building2,
+FileSpreadsheet,
+ShieldAlert,
+CheckCircle2,
+ChevronRight
+} from 'lucide-react';
 
 export default function AdminSidebar({ activeTab, setActiveTab, metrics }) {
   return (
@@ -55,6 +64,41 @@ export default function AdminSidebar({ activeTab, setActiveTab, metrics }) {
           </div>
           <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'student-list' ? 'rotate-90 text-amber-400' : 'text-slate-500'}`} />
         </button>
+
+        <button
+  type="button"
+  onClick={() => setActiveTab('allotment-list')}
+  className={`w-full flex items-center justify-between px-3 py-3 rounded text-sm font-medium transition-all ${
+    activeTab === 'allotment-list'
+      ? 'bg-[#1e3a8a] text-white border-l-4 border-amber-400 shadow-sm'
+      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+  }`}
+>
+  <div className="flex items-center gap-3">
+    <Building2
+      className={`w-5 h-5 ${
+        activeTab === 'allotment-list'
+          ? 'text-amber-400'
+          : 'text-slate-400'
+      }`}
+    />
+
+    <div className="text-left leading-tight">
+      <div>Allotment List</div>
+      <div className="text-[10px] text-slate-400 font-normal">
+        Hostel Allocation
+      </div>
+    </div>
+  </div>
+
+  <ChevronRight
+    className={`w-4 h-4 transition-transform ${
+      activeTab === 'allotment-list'
+        ? 'rotate-90 text-amber-400'
+        : 'text-slate-500'
+    }`}
+  />
+</button>
       </nav>
 
       {/* Sidebar Quick Stats Widget */}
