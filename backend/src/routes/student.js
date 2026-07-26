@@ -1,8 +1,8 @@
 import express from 'express'   
-import { submitForm } from '../controllers/student.controller.js'
-
+import { submitForm ,fetchStudentDetails} from '../controllers/student.controller.js'
 const router = express.Router()
 
 router.post('/form', submitForm)
+router.get('/:searchKey', fetchStudentDetails)
 
 export default router
