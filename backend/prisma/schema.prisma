@@ -22,6 +22,7 @@ model HostelForm {
   email         String   @unique
   mobileNumber  String
   homeState     String
+  isVerified    Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

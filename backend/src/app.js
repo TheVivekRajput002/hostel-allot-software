@@ -1,7 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import morgan from 'morgan'
-import studentRouter from './routes/student.js'
+import studentRouter from './routes/student.routes.js'
 import adminRouter from './routes/admin.routes.js'
 
 dotenv.config()
