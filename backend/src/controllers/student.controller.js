@@ -3,17 +3,19 @@ import prisma from '../db/db.js'
 
 const submitForm = async (req ,res)=>{
     try{
-        const {fullName, gender,category, Dob,RollNo,MobileNo,Branch,HomeState,Pincode} = req.body;
-        if (
-            [fullName, gender,category, Dob,RollNo,MobileNo,Branch,HomeState,Pincode].some(
-                (field) => field?.trim() === ""
-            )
-        ) {
-            return res.status(400).json('Enter all fileds');
+        const {fullName, gender,category,jeeRollNumber,mobileNumber,email,homeState,admissionYear,branch} = req.body;
+        const fields = [fullName, gender, category, jeeRollNumber, mobileNumber, email, homeState, admissionYear, branch];
+
+        const hasEmptyFields = fields.some(
+            (field) => field === undefined || field === null || String(field).trim() === ""
+        );
+
+        if (hasEmptyFields) {
+          return res.status(400).json({ message: 'Enter all fields' });
         }
         const existingStudent = await prisma.HostelForm.findUnique({
             where: {
-                RollNo: RollNo,
+                jeeRollNumber: jeeRollNumber,
             },
         });
         if (existingStudent) {
@@ -24,12 +26,12 @@ const submitForm = async (req ,res)=>{
                 fullName:fullName,
                 gender:gender,
                 category:category,
-                Dob:Dob,
-                RollNo:RollNo,
-                MobileNo:MobileNo,
-                Branch:Branch,
-                HomeState:HomeState,
-                Pincode:Pincode
+                jeeRollNumber:jeeRollNumber,
+                mobileNumber:mobileNumber,
+                email:email,
+                homeState:homeState,
+                admissionYear:admissionYear,
+                branch:branch
             },
         });
         if(!newStudent){
@@ -50,6 +52,10 @@ const submitForm = async (req ,res)=>{
 
    }
 }
+
+
+
+
 
 export {
     submitForm
