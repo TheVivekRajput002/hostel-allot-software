@@ -2,6 +2,7 @@ import express from 'express'
 import dotenv from 'dotenv'
 import morgan from 'morgan'
 import studentRouter from './routes/student.js'
+import adminRouter from './routes/admin.routes.js'
 
 dotenv.config()
 
@@ -13,6 +14,7 @@ app.get('/', (req, res) => {
 
 app.use(express.json())
 app.use('/student',studentRouter)
+app.use('/admin', adminRouter)
 
 app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`)
