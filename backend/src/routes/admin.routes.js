@@ -1,7 +1,7 @@
-import express from 'express'
+import express from 'express'   
+import { allotmentRun } from '../controllers/admin.controller.js'
+const router = express.Router()
 
-const router = express.Router();
-
-router.post('/admission-data', )
+router.post('/allotment/run', allotmentRun)
 
 export default router
