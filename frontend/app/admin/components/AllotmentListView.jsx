@@ -110,14 +110,6 @@ export default function AllotmentListView() {
                                 Gender
                             </th>
 
-                            <th>
-                                Hostel
-                            </th>
-
-                            <th>
-                                Room
-                            </th>
-
                         </tr>
 
                     </thead>
