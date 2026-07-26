@@ -1,4 +1,9 @@
 import prisma from '../db/db.js'
+import nodemailer from 'nodemailer';
+import { sendEmail } from '../services/notifications.service.js';
+
+
+
 
 
 const submitForm = async (req ,res)=>{
@@ -19,7 +24,7 @@ const submitForm = async (req ,res)=>{
             },
         });
         if (existingStudent) {
-            return res.status(409).json("You have already applied.");
+            return res.status(409).json({message:"You have already applied."});
         }
         const newStudent = await prisma.HostelForm.create({
             data: {
@@ -35,11 +40,16 @@ const submitForm = async (req ,res)=>{
             },
         });
         if(!newStudent){
-            return res.status(400).json("Error while saving Details.")
+            return res.status(400).json({message:"Error while saving Details."});
         }
+        const info = await sendEmail(email, "Form Submission Confirmation Receipt!", newStudent.id)
+        if(!info){ 
+            return res.status(500).json({message:"Error while sending confirmation email."});
+        }
+
         return res.status(200).json({
             "Data: ":newStudent,
-            "message":"Student data saved."
+            "message":"Student data saved & confirmation email sent successfully."
         })
         
     }
