@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model HostelForm {
+  id            String   @id @default(uuid())
+  fullName      String
+  gender        Gender
+  category      Category
+  jeeRollNumber String   @unique
+  branch        String
+  admissionYear Int?
+  email         String   @unique
+  mobileNumber  String
+  homeState     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hostel_form")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Category {
+  GENERAL
+  OBC
+  SC
+  ST
+  EWS
+  JK_MIGRANT_NORTHEAST
+}
+
+model Student {
+  id               String    @id @default(uuid())
+  serialNo         Int?
+  rollNo           String    @unique
+  name             String
+  eligibleCategory Category?
+  allotedCategory  Category
+  rank             Int?
+  fatherName       String?
+  motherName       String?
+  domicileStatus   String?
+  gender           Gender
+  marks            Float?
+  date             DateTime?
+  allotedRound     Int?
+  phoneNo          String?
+  status           String?
+  finalStatus      String?
+  allotments       HostelAllotmentList[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student")
+}
+
+model Hostel {
+  id               String   @id @default(uuid())
+  hostelNumber     String
+  genderDesignation Gender
+
+  rooms            Room[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("hostels")
+}
+
+model Room {
+  id           String   @id @default(uuid())
+  hostelId     String
+  hostel       Hostel   @relation(fields: [hostelId], references: [id])
+  roomNumber   String
+
+  allotments   HostelAllotmentList[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("rooms")
+}
+
+model HostelAllotmentList {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id])
+
+  createdAt  DateTime @default(now())
+
+  @@map("hostel_allotment_list")
+}
