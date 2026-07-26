@@ -3,7 +3,7 @@ Student form submit
 POST   /api/v1/students/form
 
 fetch a student submitted form to view
-GET    /api/v1/students/form/{jeeRollNumber}
+GET    /api/v1/students/form/{jeeRollNumber or ID}
 
 upload admission data csv
 POST   /api/v1/admin/admission-data

@@ -54,9 +54,33 @@ const submitForm = async (req ,res)=>{
 }
 
 
+const fetchStudentDetails = async (req, res) => {
+    try {
+        const { searchKey } = req.params; // e.g. /student/123 or /student/JEE2024001
 
+        const studentDetails = await prisma.hostelForm.findFirst({
+            where: {
+                OR: [
+                    { jeeRollNumber: searchKey },
+                    { id: searchKey } 
+                ]
+            }
+        });
+        if (!studentDetails) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+        return res.status(200).json({Data:studentDetails,message:"Student data fetched successfully."});
+    } catch (error) {
+        console.log(Error, error);
+        res.status(500).json({
+            message:'Internal Sever Error',
+            error:error.message
+        })
+    }
+}
 
 
 export {
-    submitForm
+    submitForm,
+    fetchStudentDetails
 }
