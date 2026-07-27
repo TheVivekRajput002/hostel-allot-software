@@ -1,12 +1,12 @@
 
-Student form submit
+hostel form submit
 POST   /api/students/form
 
-fetch a student submitted form to view
-GET    /api/students/form/{jeeRollNumber or ID}
+fetch all hostel forms
+GET    /api/students/form
 
 fetch a student submitted form to view
-GET    /api/students/form
+GET    /api/students/form/{jeeRollNumber or ID}...
 
 upload admission data csv
 POST   /api/admin/admission-data
@@ -22,7 +22,4 @@ POST   /api/admin/allotment/run
 
 fetch all allotted students list
 GET    /api/admin/allotment/{gender}
-
-send email for form submitted succesfully
-POST   /api/notifications/acknowledgement
 

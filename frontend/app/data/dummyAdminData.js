@@ -11,16 +11,22 @@ export const initialMetrics = {
 
 export const initialHostelsData = {
   boysHostels: [
-    { id: 'b1', code: 'H1', name: 'Boys Hostel 1 (Tagore Hall)', totalRooms: 100, emptyRooms: 24, capacity: 200, occupied: 152, warden: 'Dr. R. K. Sharma', phone: '+91 98765 43210' },
-    { id: 'b2', code: 'H2', name: 'Boys Hostel 2 (Nehru Bhavan)', totalRooms: 120, emptyRooms: 45, capacity: 240, occupied: 150, warden: 'Prof. A. P. Verma', phone: '+91 98765 43211' },
-    { id: 'b3', code: 'H3', name: 'Boys Hostel 3 (Patel Block)', totalRooms: 110, emptyRooms: 18, capacity: 220, occupied: 184, warden: 'Dr. Suresh Mehta', phone: '+91 98765 43212' },
+    { id: 'b1', code: 'H1', name: 'Boys Hostel 1 (Tagore Hall)', totalRooms: 100, emptyRooms: 0, capacity: 200, occupied: 0, warden: 'Dr. R. K. Sharma', phone: '+91 98765 43210' },
+    { id: 'b2', code: 'H2', name: 'Boys Hostel 2 (Nehru Bhavan)', totalRooms: 120, emptyRooms: 0, capacity: 240, occupied: 0, warden: 'Prof. A. P. Verma', phone: '+91 98765 43211' },
+    { id: 'b3', code: 'H3', name: 'Boys Hostel 3 (Patel Block)', totalRooms: 110, emptyRooms: 0, capacity: 220, occupied: 0, warden: 'Dr. Suresh Mehta', phone: '+91 98765 43212' },
+    { id: 'b4', code: 'H4', name: 'Boys Hostel 4 (Bose Block)', totalRooms: 90, emptyRooms: 0, capacity: 180, occupied: 0, warden: 'Dr. Vinay Pandey', phone: '+91 98765 43213' },
+    { id: 'b5', code: 'H5', name: 'Boys Hostel 5 (Raman Block)', totalRooms: 95, emptyRooms: 0, capacity: 190, occupied: 0, warden: 'Prof. M. L. Gupta', phone: '+91 98765 43214' },
+    { id: 'b6', code: 'H6', name: 'Boys Hostel 6 (Bhagat Block)', totalRooms: 105, emptyRooms: 0, capacity: 210, occupied: 0, warden: 'Dr. Ashok Tiwari', phone: '+91 98765 43215' },
+    { id: 'b7', code: 'H7', name: 'Boys Hostel 7 (Shastri Block)', totalRooms: 115, emptyRooms: 0, capacity: 230, occupied: 0, warden: 'Prof. R. N. Singh', phone: '+91 98765 43216' },
+    { id: 'b8', code: 'H8', name: 'Boys Hostel 8 (Ambedkar Block)', totalRooms: 100, emptyRooms: 0, capacity: 200, occupied: 0, warden: 'Dr. Prakash Jain', phone: '+91 98765 43217' },
   ],
   girlsHostels: [
-    { id: 'g1', code: 'H1', name: 'Girls Hostel 1 (Gargi Bhavan)', totalRooms: 120, emptyRooms: 35, capacity: 240, occupied: 170, warden: 'Dr. Sunita Rao', phone: '+91 98765 43218' },
-    { id: 'g2', code: 'H2', name: 'Girls Hostel 2 (Kalpana Block)', totalRooms: 110, emptyRooms: 48, capacity: 220, occupied: 124, warden: 'Prof. Meenakshi Sundaram', phone: '+91 98765 43219' },
-    { id: 'g3', code: 'H3', name: 'Girls Hostel 3 (Sarojini House)', totalRooms: 125, emptyRooms: 15, capacity: 250, occupied: 220, warden: 'Dr. Ananya Mukherjee', phone: '+91 98765 43220' },
+    { id: 'g1', code: 'H1', name: 'Girls Hostel 1 (Gargi Bhavan)', totalRooms: 120, emptyRooms: 0, capacity: 240, occupied: 0, warden: 'Dr. Sunita Rao', phone: '+91 98765 43218' },
+    { id: 'g2', code: 'H2', name: 'Girls Hostel 2 (Kalpana Block)', totalRooms: 110, emptyRooms: 0, capacity: 220, occupied: 0, warden: 'Prof. Meenakshi Sundaram', phone: '+91 98765 43219' },
+    { id: 'g3', code: 'H3', name: 'Girls Hostel 3 (Sarojini House)', totalRooms: 125, emptyRooms: 0, capacity: 250, occupied: 0, warden: 'Dr. Ananya Mukherjee', phone: '+91 98765 43220' },
   ],
 };
+
 
 export const initialExcelUploads = [
   { id: 'ex-1', fileName: 'JEE_Main_Admissions_2026_Batch1.xlsx', uploadDate: '2026-07-20 11:45 AM', totalRows: 850, verifiedRows: 842, status: 'Completed', uploadedBy: 'Admin (System Officer)' },

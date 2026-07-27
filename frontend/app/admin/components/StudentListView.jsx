@@ -22,7 +22,8 @@ import {
 export default function StudentListView({ 
   studentList, 
   setStudentList, 
-  onSelectStudent 
+  onSelectStudent,
+  refreshData
 }) {
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,11 +53,26 @@ export default function StudentListView({
     setCategoryFilter('ALL');
   };
 
-  const handleSendForVerification = () => {
-  console.log("Send For Verification clicked");
-
-  // Later you'll call your backend API here.
-};
+  const handleSendForVerification = async () => {
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiBaseUrl}/api/admin/verification/run`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Verification Completed: ${result.verifiedCount} verified, ${result.unverifiedCount} unverified.`);
+        if (refreshData) {
+          await refreshData();
+        }
+      } else {
+        alert("Failed to run verification process.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error while running verification.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -221,68 +237,70 @@ export default function StudentListView({
                   </div>
                 </div>
 
-                {/* Card Details Grid */}
-                <div className="p-4 space-y-3 flex-1 text-xs text-slate-700">
-                  <div className="grid grid-col gap-2 bg-slate-100/60 p-2.5 rounded border border-slate-200">
-                    <div>
-                      <span className="text-slate-500 block text-[10px] uppercase font-semibold">Department & Program</span>
-                      <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
-                        <GraduationCap className="w-3.5 h-3.5 text-[#0f2c59]" />
-                        {student.branch} ({student.program})
-                      </span>
+                {/* Card Details Grid & Action Footer (Only shown if verified) */}
+                {isVerified && (
+                  <>
+                    <div className="p-4 space-y-3 flex-1 text-xs text-slate-700">
+                      <div className="grid grid-col gap-2 bg-slate-100/60 p-2.5 rounded border border-slate-200">
+                        <div>
+                          <span className="text-slate-500 block text-[10px] uppercase font-semibold">Department & Program</span>
+                          <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
+                            <GraduationCap className="w-3.5 h-3.5 text-[#0f2c59]" />
+                            {student.branch} ({student.program})
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-slate-500 block text-[10px] uppercase font-semibold">Merit Rank & Category</span>
+                          <span className="font-bold text-amber-800 flex items-center gap-1 mt-0.5">
+                            <Award className="w-3.5 h-3.5 text-amber-600" />
+                            Rank: #{student.meritRank} | {student.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Student Location & Details */}
+                      <div className="space-y-1.5 text-slate-600">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-slate-500">
+                            <MapPin className="w-3.5 h-3.5 text-red-600" /> Home District / State:
+                          </span>
+                          <span className="font-semibold text-slate-800">
+                            {student.homeDistrict}, {student.homeState} ({student.distanceKm} km)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Gender & Academic Year:</span>
+                          <span className="font-semibold text-slate-800">
+                            {student.gender === 'Boys' ? 'Male' : 'Female'} • {student.year}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Application Date:</span>
+                          <span className="font-semibold text-slate-800">{student.submissionDate}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <span className="text-slate-500 block text-[10px] uppercase font-semibold">Merit Rank & Category</span>
-                      <span className="font-bold text-amber-800 flex items-center gap-1 mt-0.5">
-                        <Award className="w-3.5 h-3.5 text-amber-600" />
-                        Rank: #{student.meritRank} | {student.category}
-                      </span>
+                    {/* Card Action Footer */}
+                    <div className="p-3 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-2">
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Hostel: <span className="font-bold text-slate-800">{student.assignedHostel}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onSelectStudent(student)}
+                        className="px-3.5 py-1.5 bg-[#0f2c59] hover:bg-[#1e3a8a] text-white text-xs font-bold rounded flex items-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-amber-400" />
+                        View Details
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Student Location & Details */}
-                  <div className="space-y-1.5 text-slate-600">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1 text-slate-500">
-                        <MapPin className="w-3.5 h-3.5 text-red-600" /> Home District / State:
-                      </span>
-                      <span className="font-semibold text-slate-800">
-                        {student.homeDistrict}, {student.homeState} ({student.distanceKm} km)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Gender & Academic Year:</span>
-                      <span className="font-semibold text-slate-800">
-                        {student.gender === 'Boys' ? 'Male' : 'Female'} • {student.year}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Application Date:</span>
-                      <span className="font-semibold text-slate-800">{student.submissionDate}</span>
-                    </div>
-                  </div>
-
-
-                </div>
-
-                {/* Card Action Footer */}
-                <div className="p-3 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-2">
-                  <div className="text-[11px] text-slate-500 font-medium">
-                    Hostel: <span className="font-bold text-slate-800">{student.assignedHostel}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => onSelectStudent(student)}
-                    className="px-3.5 py-1.5 bg-[#0f2c59] hover:bg-[#1e3a8a] text-white text-xs font-bold rounded flex items-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-amber-400" />
-                    View Details
-                  </button>
-                </div>
+                  </>
+                )}
               </div>
             );
           })}

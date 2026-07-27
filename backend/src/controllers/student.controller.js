@@ -63,6 +63,14 @@ const submitForm = async (req ,res)=>{
         if (existingStudent) {
             return res.status(409).json({message:"You have already applied."});
         }
+        const existingEmail = await prisma.HostelForm.findUnique({
+            where: {
+                email: email,
+            },
+        });
+        if (existingEmail) {
+            return res.status(409).json({message:"This email has already been used to apply."});
+        }
         const newStudent = await prisma.HostelForm.create({
             data: {
                 fullName:fullName,
@@ -105,6 +113,48 @@ const submitForm = async (req ,res)=>{
    }
 }
 
+const fetchAllForms = async (req, res) => {
+    try {
+        const forms = await prisma.hostelForm.findMany();
+        
+        // Fetch matching Student records for all forms
+        const rollNumbers = forms.map(f => f.jeeRollNumber);
+        const students = await prisma.student.findMany({
+            where: {
+                rollNo: {
+                    in: rollNumbers
+                }
+            }
+        });
+        
+        // Create a lookup map of student records by rollNo
+        const studentMap = {};
+        students.forEach(s => {
+            studentMap[s.rollNo] = s;
+        });
+        
+        // Merge forms with studentInfo
+        const mergedForms = forms.map(f => {
+            const studentInfo = studentMap[f.jeeRollNumber] || null;
+            return {
+                ...f,
+                studentInfo: studentInfo
+            };
+        });
+
+        return res.status(200).json({
+            Data: mergedForms,
+            message: "Hostel forms fetched successfully."
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal Server Error',
+            error: error.message
+        });
+    }
+}
+
 
 const fetchStudentDetails = async (req, res) => {
     try {
@@ -134,5 +184,6 @@ const fetchStudentDetails = async (req, res) => {
 
 export {
     submitForm,
-    fetchStudentDetails
+    fetchStudentDetails,
+    fetchAllForms
 }

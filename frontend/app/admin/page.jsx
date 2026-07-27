@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminHeader from './components/AdminHeader';
 import AdminSidebar from './components/AdminSidebar';
 import DashboardView from './components/DashboardView';
@@ -23,10 +23,71 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState(initialMetrics);
   const [hostelsData, setHostelsData] = useState(initialHostelsData);
   const [excelUploads, setExcelUploads] = useState(initialExcelUploads);
-  const [studentList, setStudentList] = useState(initialStudentList);
+  const [studentList, setStudentList] = useState([]);
 
   // Selected student for detail modal
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Fetch student forms from backend
+  const fetchStudentList = async () => {
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiBaseUrl}/api/students/form`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch student forms');
+      }
+      const resData = await response.json();
+      
+      const mappedStudents = resData.Data.map((student) => {
+        const studentInfo = student.studentInfo;
+        return {
+          id: student.id,
+          applicationNo: student.id,
+          rollNo: student.jeeRollNumber,
+          name: student.fullName,
+          gender: studentInfo ? (studentInfo.gender === 'FEMALE' ? 'Girls' : 'Boys') : (student.gender === 'FEMALE' ? 'Girls' : 'Boys'),
+          category: studentInfo ? (studentInfo.allotedCategory === 'GENERAL' ? 'GEN' : studentInfo.allotedCategory) : (student.category === 'GENERAL' ? 'GEN' : student.category),
+          branch: student.branch,
+          program: 'B.Tech',
+          year: student.admissionYear ? `${student.admissionYear} Year` : '1st Year',
+          meritRank: studentInfo ? studentInfo.rank : 'N/A',
+          homeState: student.homeState,
+          homeDistrict: studentInfo ? (studentInfo.domicileStatus || 'N/A') : 'N/A',
+          distanceKm: 0,
+          submissionDate: new Date(student.createdAt).toISOString().split('T')[0],
+          status: student.isVerified ? 'Verified' : 'Pending',
+          verificationDate: studentInfo?.date ? new Date(studentInfo.date).toISOString().split('T')[0] : null,
+          assignedHostel: 'Unassigned',
+          email: student.email,
+          phone: studentInfo ? (studentInfo.phoneNo || student.mobileNumber) : student.mobileNumber,
+          documents: {
+            aadhaar: true,
+            admissionLetter: true,
+            markSheet: true,
+            incomeCert: true
+          }
+        };
+      });
+
+      setStudentList(mappedStudents);
+
+      // Update metrics based on fetched student list
+      const verifiedCount = mappedStudents.filter(s => s.status === 'Verified').length;
+      const pendingCount = mappedStudents.filter(s => s.status === 'Pending').length;
+      setMetrics(prev => ({
+        ...prev,
+        totalStudentsFilled: mappedStudents.length,
+        totalVerifiedStudents: verifiedCount,
+        totalPendingVerification: pendingCount,
+      }));
+    } catch (err) {
+      console.error('Error fetching student forms:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudentList();
+  }, []);
 
   // Handle student record updates from modal
   const handleUpdateStudent = (updatedStudent) => {
@@ -39,8 +100,8 @@ export default function AdminPage() {
 
     setMetrics(prev => ({
       ...prev,
-      totalVerifiedStudents: 1000 + verifiedCount,
-      totalPendingVerification: 400 + pendingCount,
+      totalVerifiedStudents: verifiedCount,
+      totalPendingVerification: pendingCount,
     }));
   };
 
@@ -68,6 +129,7 @@ export default function AdminPage() {
     setHostelsData={setHostelsData}
     excelUploads={excelUploads}
     setExcelUploads={setExcelUploads}
+    refreshData={fetchStudentList}
   />
 )}
 
@@ -76,6 +138,7 @@ export default function AdminPage() {
     studentList={studentList}
     setStudentList={setStudentList}
     onSelectStudent={(student) => setSelectedStudent(student)}
+    refreshData={fetchStudentList}
   />
 )}
 

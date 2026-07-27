@@ -74,6 +74,7 @@ model Hostel {
   id               String   @id @default(uuid())
   hostelNumber     String
   genderDesignation Gender
+  isActive         Boolean  @default(false)
 
   rooms            Room[]
 
