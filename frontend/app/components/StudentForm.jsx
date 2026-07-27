@@ -44,6 +44,7 @@ export default function StudentForm() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
+  const [submitError, setSubmitError] = useState('');
 
   const branches = [
     'Computer Science & Engineering',
@@ -112,12 +113,7 @@ export default function StudentForm() {
       newErrors.mobile = 'Enter a valid 10-digit mobile number';
     }
 
-    if (!formData.guardianName.trim()) newErrors.guardianName = 'Guardian Name is required';
-    if (!formData.guardianMobile.trim()) {
-      newErrors.guardianMobile = 'Guardian Mobile is required';
-    }
 
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
     if (!formData.state) newErrors.state = 'Please select state';
     if (!formData.declaration) newErrors.declaration = 'You must accept the declaration to proceed';
 
@@ -125,7 +121,7 @@ export default function StudentForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
       // Scroll to first error
@@ -137,21 +133,59 @@ export default function StudentForm() {
     }
 
     setIsSubmitting(true);
+    setSubmitError('');
 
-    // Simulate form submission process
-    setTimeout(() => {
-      const refNumber = 'HST-' + Math.floor(100000 + Math.random() * 900000);
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      
+      const payload = {
+        fullName: formData.fullName,
+        gender: formData.gender,
+        category: formData.category,
+        jeeRollNumber: formData.jeeRollNo,
+        mobileNumber: formData.mobile,
+        email: formData.email,
+        homeState: formData.state,
+        admissionYear: formData.admissionYear,
+        branch: formData.branch
+      };
+
+      const response = await fetch(`${apiBaseUrl}/api/students/form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to submit application. Please try again.');
+      }
+
+      const studentData = result["Data: "];
+
       setSubmittedData({
         ...formData,
-        referenceNo: refNumber,
-        submittedAt: new Date().toLocaleString('en-IN', {
+        referenceNo: studentData.id,
+        submittedAt: studentData.createdAt ? new Date(studentData.createdAt).toLocaleString('en-IN', {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        }) : new Date().toLocaleString('en-IN', {
           dateStyle: 'medium',
           timeStyle: 'short'
         })
       });
-      setIsSubmitting(false);
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1200);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setSubmitError(error.message || 'A network error occurred. Please check your connection.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -174,6 +208,7 @@ export default function StudentForm() {
       declaration: false
     });
     setErrors({});
+    setSubmitError('');
   };
 
   if (submittedData) {
@@ -317,6 +352,12 @@ export default function StudentForm() {
 
       {/* Main Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
+        {submitError && (
+          <div className="p-4 rounded-xl flex items-center gap-3" style={{ backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-border)', color: 'var(--error)' }}>
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm font-medium">{submitError}</span>
+          </div>
+        )}
         <div className="card-container p-6 sm:p-8 space-y-10">
         {/* Section 1: Personal Details */}
         <div className="pt-10">

@@ -8,7 +8,44 @@ import { sendEmail } from '../services/notifications.service.js';
 
 const submitForm = async (req ,res)=>{
     try{
-        const {fullName, gender,category,jeeRollNumber,mobileNumber,email,homeState,admissionYear,branch} = req.body;
+        let {fullName, gender,category,jeeRollNumber,mobileNumber,email,homeState,admissionYear,branch} = req.body;
+
+        // Parse admissionYear as integer
+        if (admissionYear !== undefined && admissionYear !== null && admissionYear !== "") {
+            const parsed = parseInt(admissionYear, 10);
+            admissionYear = isNaN(parsed) ? null : parsed;
+        } else {
+            admissionYear = null;
+        }
+
+        // Normalize gender
+        if (gender) {
+            const gUpper = String(gender).trim().toUpperCase();
+            if (gUpper === 'MALE' || gUpper === 'M') {
+                gender = 'MALE';
+            } else if (gUpper === 'FEMALE' || gUpper === 'F') {
+                gender = 'FEMALE';
+            }
+        }
+
+        // Normalize category
+        if (category) {
+            const cUpper = String(category).trim().toUpperCase();
+            if (cUpper === 'GENERAL' || cUpper === 'GEN') {
+                category = 'GENERAL';
+            } else if (cUpper === 'OBC-NCL' || cUpper === 'OBC') {
+                category = 'OBC';
+            } else if (cUpper === 'SC') {
+                category = 'SC';
+            } else if (cUpper === 'ST') {
+                category = 'ST';
+            } else if (cUpper === 'EWS') {
+                category = 'EWS';
+            } else if (cUpper === 'JK_MIGRANT_NORTHEAST' || cUpper.includes('JK') || cUpper.includes('NORTHEAST')) {
+                category = 'JK_MIGRANT_NORTHEAST';
+            }
+        }
+
         const fields = [fullName, gender, category, jeeRollNumber, mobileNumber, email, homeState, admissionYear, branch];
 
         const hasEmptyFields = fields.some(
@@ -42,14 +79,19 @@ const submitForm = async (req ,res)=>{
         if(!newStudent){
             return res.status(400).json({message:"Error while saving Details."});
         }
-        const info = await sendEmail(email, "Form Submission Confirmation Receipt!", newStudent.id)
-        if(!info){ 
-            return res.status(500).json({message:"Error while sending confirmation email."});
+        let emailSent = false;
+        try {
+            const info = await sendEmail(email, "Form Submission Confirmation Receipt!", newStudent.id);
+            if (info) emailSent = true;
+        } catch (emailError) {
+            console.log("Email sending failed:", emailError.message);
         }
 
         return res.status(200).json({
-            "Data: ":newStudent,
-            "message":"Student data saved & confirmation email sent successfully."
+            "Data: ": newStudent,
+            "message": emailSent
+                ? "Student data saved & confirmation email sent successfully."
+                : "Student data saved successfully. Confirmation email could not be sent."
         })
         
     }

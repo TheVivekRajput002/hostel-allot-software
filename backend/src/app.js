@@ -14,8 +14,8 @@ app.get('/', (req, res) => {
 })
 
 app.use(express.json())
-app.use('/student', studentRouter)
-app.use('/admin', adminRouter)
+app.use('/api/students', studentRouter)
+app.use('/api/admin', adminRouter)
 
 
 app.listen(process.env.PORT, () => {

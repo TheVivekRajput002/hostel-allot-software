@@ -3,6 +3,6 @@ import { submitForm ,fetchStudentDetails} from '../controllers/student.controlle
 const router = express.Router()
 
 router.post('/form', submitForm)
-router.get('/:searchKey', fetchStudentDetails)
+router.get('/form/:searchKey', fetchStudentDetails)
 
 export default router
