@@ -8,7 +8,10 @@ dotenv.config()
 
 const app = express()
 app.use(morgan('dev'))
-app.use(cors())
+app.use(cors({
+    origin: ['https://hostel-allot-software.vercel.app', 'http://localhost:3000'],
+    credentials: true
+}))
 app.get('/', (req, res) => {
     res.json({ message: "Hello World" })
 })
