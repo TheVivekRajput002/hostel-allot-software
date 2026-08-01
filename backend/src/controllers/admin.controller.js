@@ -3,6 +3,12 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import xlsx from 'xlsx';
 import { allocateHostelSeats } from '../services/hostelAllocation.js'
+import {
+  evaluateHostelFormVerification,
+  formatVerificationReasons,
+} from '../services/verification.service.js'
+import { repairSingleOccupancyRooms } from '../services/roomPairing.service.js'
+import { BEDS_PER_ROOM } from '../services/hostelAllocation.js'
 
 const getRowVal = (row, possibleKeys) => {
   for (const k of Object.keys(row)) {
@@ -113,53 +119,87 @@ export const uploadAdmissionData = async (req, res) => {
 
 export const runVerification = async (req, res) => {
   try {
-    // Fetch roll numbers of students whose finalStatus is not cancelled
-    const students = await prisma.student.findMany({
-      where: {
-        NOT: {
-          finalStatus: {
-            equals: 'cancelled',
-            mode: 'insensitive',
+    const forms = await prisma.hostelForm.findMany();
+    const rollNumbers = forms.map((form) => form.jeeRollNumber);
+
+    const students = rollNumbers.length
+      ? await prisma.student.findMany({
+          where: { rollNo: { in: rollNumbers } },
+        })
+      : [];
+
+    const studentMap = {};
+    students.forEach((student) => {
+      studentMap[student.rollNo] = student;
+    });
+
+    let verifiedCount = 0;
+    let unverifiedCount = 0;
+
+    await prisma.$transaction(
+      forms.map((form) => {
+        const student = studentMap[form.jeeRollNumber] || null;
+        const { isVerified, reasons } = evaluateHostelFormVerification(form, student);
+
+        if (isVerified) verifiedCount += 1;
+        else unverifiedCount += 1;
+
+        return prisma.hostelForm.update({
+          where: { id: form.id },
+          data: {
+            isVerified,
+            verificationReason: isVerified ? null : formatVerificationReasons(reasons),
           },
-        },
-      },
-      select: { rollNo: true },
-    });
-    const validRollNumbers = students.map((s) => s.rollNo);
-
-    // Update isVerified to true for hostel forms with matching JEE roll numbers
-    const verifiedResult = await prisma.hostelForm.updateMany({
-      where: {
-        jeeRollNumber: {
-          in: validRollNumbers,
-        },
-      },
-      data: {
-        isVerified: true,
-      },
-    });
-
-    // Update isVerified to false for hostel forms without matching JEE roll numbers
-    const unverifiedResult = await prisma.hostelForm.updateMany({
-      where: {
-        jeeRollNumber: {
-          notIn: validRollNumbers,
-        },
-      },
-      data: {
-        isVerified: false,
-      },
-    });
+        });
+      })
+    );
 
     return res.status(200).json({
       message: 'Verification process completed successfully.',
-      verifiedCount: verifiedResult.count,
-      unverifiedCount: unverifiedResult.count,
+      verifiedCount,
+      unverifiedCount,
     });
   } catch (error) {
     console.error('Run Verification Error:', error);
     return res.status(500).json({
       message: 'Failed to run verification process.',
+      error: error.message,
+    });
+  }
+};
+
+export const getAdminMetrics = async (req, res) => {
+  try {
+    const [
+      totalStudentsFilled,
+      totalVerifiedStudents,
+      boysAllotted,
+      girlsAllotted,
+      activeHostels,
+    ] = await Promise.all([
+      prisma.hostelForm.count(),
+      prisma.hostelForm.count({ where: { isVerified: true } }),
+      prisma.hostelAllotmentList.count({ where: { student: { gender: 'MALE' } } }),
+      prisma.hostelAllotmentList.count({ where: { student: { gender: 'FEMALE' } } }),
+      prisma.hostel.count({ where: { isActive: true } }),
+    ]);
+
+    return res.status(200).json({
+      message: 'Admin metrics fetched successfully.',
+      data: {
+        totalStudentsFilled,
+        totalVerifiedStudents,
+        totalPendingVerification: totalStudentsFilled - totalVerifiedStudents,
+        totalAllotted: boysAllotted + girlsAllotted,
+        boysAllotted,
+        girlsAllotted,
+        activeHostels,
+      },
+    });
+  } catch (error) {
+    console.error('Get Admin Metrics Error:', error);
+    return res.status(500).json({
+      message: 'Failed to fetch admin metrics.',
       error: error.message,
     });
   }
@@ -176,25 +216,65 @@ export const getAllotedStudentsByGender = async (req, res) => {
       });
     }
 
-    const allotmentList = await prisma.hostelAllotmentList.findMany({
-      where: {
-        student: {
-          gender: normalizedGender,
-        },
-      },
-      include: {
-        student: true,
-        room: {
-          include: {
-            hostel: true,
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const skip = (page - 1) * limit;
+    const search = req.query.search?.trim();
+
+    const where = {
+      AND: [
+        { student: { gender: normalizedGender } },
+        ...(search
+          ? [{
+              OR: [
+                { student: { name: { contains: search, mode: 'insensitive' } } },
+                { student: { rollNo: { contains: search, mode: 'insensitive' } } },
+                { room: { roomNumber: { contains: search, mode: 'insensitive' } } },
+                { room: { hostel: { hostelNumber: { contains: search, mode: 'insensitive' } } } },
+              ],
+            }]
+          : []),
+      ],
+    };
+
+    const [total, allotmentList] = await Promise.all([
+      prisma.hostelAllotmentList.count({ where }),
+      prisma.hostelAllotmentList.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          student: {
+            select: {
+              rollNo: true,
+              name: true,
+              rank: true,
+              allotedCategory: true,
+              gender: true,
+            },
+          },
+          room: {
+            select: {
+              roomNumber: true,
+              hostel: {
+                select: { hostelNumber: true },
+              },
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     return res.status(200).json({
       message: `Allotted student list for gender ${normalizedGender} fetched successfully.`,
-      count: allotmentList.length,
+      count: total,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
       data: allotmentList,
     });
   } catch (error) {
@@ -212,8 +292,9 @@ export const getHostelInventory = async (req, res) => {
     const hostels = await prisma.hostel.findMany({
       include: {
         rooms: {
-          include: {
-            allotments: true,
+          select: {
+            id: true,
+            _count: { select: { allotments: true } },
           },
         },
       },
@@ -225,16 +306,25 @@ export const getHostelInventory = async (req, res) => {
 
     for (const hostel of hostels) {
       const totalRooms = hostel.rooms.length;
-      const occupiedRooms = hostel.rooms.filter(r => r.allotments.length > 0).length;
-      const emptyRooms = totalRooms - occupiedRooms;
+      const occupiedBeds = hostel.rooms.reduce(
+        (sum, room) => sum + room._count.allotments,
+        0
+      );
+      const totalBeds = totalRooms * BEDS_PER_ROOM;
+      const emptyBeds = totalBeds - occupiedBeds;
+      const fullyOccupiedRooms = hostel.rooms.filter(
+        (room) => room._count.allotments >= BEDS_PER_ROOM
+      ).length;
 
       const hostelData = {
         id: hostel.id,
         hostelNumber: hostel.hostelNumber,
         genderDesignation: hostel.genderDesignation,
         totalRooms,
-        occupiedRooms,
-        emptyRooms,
+        occupiedRooms: fullyOccupiedRooms,
+        occupiedBeds,
+        emptyRooms: Math.ceil(emptyBeds / BEDS_PER_ROOM),
+        emptyBeds,
         isActive: hostel.isActive,
       };
 
@@ -320,63 +410,59 @@ export const updateHostelInventory = async (req, res) => {
 // ─── RUN HOSTEL ALLOTMENT ALGORITHM ───
 export const allotmentRun = async (req, res) => {
   try {
-    const rollNumbers = await prisma.hostelForm.findMany({
-      where: {
-        isVerified: true,
-      },
+    const verifiedForms = await prisma.hostelForm.findMany({
+      where: { isVerified: true },
     });
 
-    if (rollNumbers.length === 0) {
-      return res.status(400).json({ message: "Please verify the students first." });
+    if (verifiedForms.length === 0) {
+      return res.status(400).json({ message: 'Please verify the students first.' });
+    }
+
+    // Pair existing single-occupancy rooms by consecutive serialNo
+    const maleRepair = await repairSingleOccupancyRooms('MALE');
+    const femaleRepair = await repairSingleOccupancyRooms('FEMALE');
+
+    const alreadyAllotted = await prisma.hostelAllotmentList.findMany({
+      select: { studentId: true },
+    });
+    const allottedStudentIds = new Set(alreadyAllotted.map((a) => a.studentId));
+
+    const studentWhere = {
+      rollNo: { in: verifiedForms.map((form) => form.jeeRollNumber) },
+    };
+    if (allottedStudentIds.size > 0) {
+      studentWhere.id = { notIn: [...allottedStudentIds] };
     }
 
     const students = await prisma.student.findMany({
-      where: {
-        rollNo: {
-          in: rollNumbers.map((form) => form.jeeRollNumber),
-        },
-      },
+      where: studentWhere,
     });
 
     const studentMale = students.filter((student) => student.gender === 'MALE');
     const studentFemale = students.filter((student) => student.gender === 'FEMALE');
 
-    // Fetch unoccupied rooms belonging to active MALE hostels
-    const activeMaleRooms = await prisma.room.findMany({
-      where: {
-        hostel: {
-          genderDesignation: 'MALE',
-          isActive: true,
+    const fetchAvailableRooms = (genderDesignation) =>
+      prisma.room.findMany({
+        where: {
+          hostel: { genderDesignation, isActive: true },
         },
-      },
-      include: {
-        allotments: true,
-      },
-    });
-    const emptyMaleRooms = activeMaleRooms.filter(r => r.allotments.length === 0);
-
-    // Fetch unoccupied rooms belonging to active FEMALE hostels
-    const activeFemaleRooms = await prisma.room.findMany({
-      where: {
-        hostel: {
-          genderDesignation: 'FEMALE',
-          isActive: true,
+        include: {
+          allotments: {
+            include: {
+              student: { select: { id: true, serialNo: true } },
+            },
+          },
         },
-      },
-      include: {
-        allotments: true,
-      },
-    });
-    const emptyFemaleRooms = activeFemaleRooms.filter(r => r.allotments.length === 0);
+      }).then((rooms) => rooms.filter((room) => room.allotments.length < BEDS_PER_ROOM));
 
-    const allocatedMaleSeats = allocateHostelSeats(studentMale, emptyMaleRooms);
-    const allocatedFemaleSeats = allocateHostelSeats(studentFemale, emptyFemaleRooms);
+    const availableMaleRooms = await fetchAvailableRooms('MALE');
+    const availableFemaleRooms = await fetchAvailableRooms('FEMALE');
 
-    // Persist allotments to the database
+    const allocatedMaleSeats = allocateHostelSeats(studentMale, availableMaleRooms);
+    const allocatedFemaleSeats = allocateHostelSeats(studentFemale, availableFemaleRooms);
+
     const allotmentsToCreate = [];
-    const allAllocatedStudents = [...allocatedMaleSeats, ...allocatedFemaleSeats];
-
-    for (const student of allAllocatedStudents) {
+    for (const student of [...allocatedMaleSeats, ...allocatedFemaleSeats]) {
       if (student.roomId) {
         allotmentsToCreate.push({
           studentId: student.id,
@@ -392,14 +478,22 @@ export const allotmentRun = async (req, res) => {
       });
     }
 
+    // Run repair again so newly allotted singles can pair up
+    const maleRepairAfter = await repairSingleOccupancyRooms('MALE');
+    const femaleRepairAfter = await repairSingleOccupancyRooms('FEMALE');
+
     return res.status(200).json({
       maleStudentsAllotted: allocatedMaleSeats.length,
       femaleStudentsAllotted: allocatedFemaleSeats.length,
-      message: "Hostel Allotment Completed Successfully.",
+      roomsPaired: {
+        male: maleRepair.pairsMerged + maleRepairAfter.pairsMerged,
+        female: femaleRepair.pairsMerged + femaleRepairAfter.pairsMerged,
+      },
+      message: 'Hostel Allotment Completed Successfully.',
     });
   } catch (error) {
     console.error('Allotment Run Error:', error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };
 

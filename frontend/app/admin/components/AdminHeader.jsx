@@ -3,7 +3,7 @@
 import React from 'react';
 import { Landmark, Bell, UserCheck, ShieldCheck, HelpCircle } from 'lucide-react';
 
-export default function AdminHeader({ activeTab }) {
+export default function AdminHeader() {
   return (
     <header className="w-full bg-[#0b2545] text-white border-b border-[#1e3a8a] shadow-sm">
       {/* Tricolor top border ribbon */}

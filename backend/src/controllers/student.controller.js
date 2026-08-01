@@ -113,47 +113,96 @@ const submitForm = async (req ,res)=>{
    }
 }
 
+const CATEGORY_MAP = {
+    GEN: 'GENERAL',
+    GENERAL: 'GENERAL',
+    OBC: 'OBC',
+    SC: 'SC',
+    ST: 'ST',
+    EWS: 'EWS',
+};
+
 const fetchAllForms = async (req, res) => {
     try {
-        const forms = await prisma.hostelForm.findMany();
-        
-        // Fetch matching Student records for all forms
-        const rollNumbers = forms.map(f => f.jeeRollNumber);
-        const students = await prisma.student.findMany({
-            where: {
-                rollNo: {
-                    in: rollNumbers
-                }
-            }
-        });
-        
-        // Create a lookup map of student records by rollNo
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+        const skip = (page - 1) * limit;
+        const search = req.query.search?.trim();
+        const status = req.query.status?.toUpperCase();
+        const gender = req.query.gender?.toUpperCase();
+        const category = req.query.category?.toUpperCase();
+
+        const where = {};
+
+        if (status === 'VERIFIED') {
+            where.isVerified = true;
+        } else if (status === 'PENDING') {
+            where.isVerified = false;
+        }
+
+        if (gender === 'BOYS') {
+            where.gender = 'MALE';
+        } else if (gender === 'GIRLS') {
+            where.gender = 'FEMALE';
+        }
+
+        if (category && category !== 'ALL') {
+            where.category = CATEGORY_MAP[category] || category;
+        }
+
+        if (search) {
+            where.OR = [
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { jeeRollNumber: { contains: search, mode: 'insensitive' } },
+                { branch: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        const [total, forms] = await Promise.all([
+            prisma.hostelForm.count({ where }),
+            prisma.hostelForm.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+            }),
+        ]);
+
+        const rollNumbers = forms.map((f) => f.jeeRollNumber);
+        const students = rollNumbers.length
+            ? await prisma.student.findMany({
+                where: { rollNo: { in: rollNumbers } },
+            })
+            : [];
+
         const studentMap = {};
-        students.forEach(s => {
+        students.forEach((s) => {
             studentMap[s.rollNo] = s;
         });
-        
-        // Merge forms with studentInfo
-        const mergedForms = forms.map(f => {
-            const studentInfo = studentMap[f.jeeRollNumber] || null;
-            return {
-                ...f,
-                studentInfo: studentInfo
-            };
-        });
+
+        const mergedForms = forms.map((f) => ({
+            ...f,
+            studentInfo: studentMap[f.jeeRollNumber] || null,
+        }));
 
         return res.status(200).json({
             Data: mergedForms,
-            message: "Hostel forms fetched successfully."
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit) || 1,
+            },
+            message: 'Hostel forms fetched successfully.',
         });
     } catch (error) {
         console.log(error);
         return res.status(500).json({
             message: 'Internal Server Error',
-            error: error.message
+            error: error.message,
         });
     }
-}
+};
 
 
 const fetchStudentDetails = async (req, res) => {

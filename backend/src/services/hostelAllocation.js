@@ -1,165 +1,171 @@
 import { Category } from '@prisma/client';
+import {
+  BEDS_PER_ROOM,
+  buildRoomStates,
+  countAvailableBeds,
+  hasAvailableBed,
+  occupyRoom,
+  pickRoomForStudent,
+} from './roomPairing.service.js';
 
 /**
  * Normalizes category inputs into valid Prisma `Category` enum values.
- * SC, ST, and OBC map to their enums; all other categories (EWS, JK, etc.) default to GENERAL.
  */
 function normalizeCategory(categoryStr) {
-    if (!categoryStr) return Category.GENERAL;
-    const catUpper = String(categoryStr).trim().toUpperCase();
+  if (!categoryStr) return Category.GENERAL;
+  const catUpper = String(categoryStr).trim().toUpperCase();
 
-    if (catUpper.includes('SC')) return Category.SC;
-    if (catUpper.includes('ST')) return Category.ST;
-    if (catUpper.includes('OBC')) return Category.OBC;
-    
-    // Everything else defaults to Open Merit / General
-    return Category.GENERAL; 
+  if (catUpper.includes('SC')) return Category.SC;
+  if (catUpper.includes('ST')) return Category.ST;
+  if (catUpper.includes('OBC')) return Category.OBC;
+
+  return Category.GENERAL;
 }
 
 /**
- * Main Hostel Allocation Function (Prisma Compatible)
+ * Hostel allocation with double-bed rooms (2 students per room).
+ * Quotas are calculated on total bed capacity (rooms × 2).
+ * Roommates are preferentially paired by consecutive serialNo.
  */
 function allocateHostelSeats(studentsList, roomsList) {
-    if (!Array.isArray(studentsList) || !Array.isArray(roomsList)) {
-        throw new TypeError('Both studentsList and roomsList must be arrays.');
+  if (!Array.isArray(studentsList) || !Array.isArray(roomsList)) {
+    throw new TypeError('Both studentsList and roomsList must be arrays.');
+  }
+
+  const roomStates = buildRoomStates(roomsList);
+  const totalRooms = roomStates.length;
+
+  if (totalRooms === 0 || !hasAvailableBed(roomStates)) return [];
+
+  const totalSeats = countAvailableBeds(roomStates);
+
+  const students = studentsList.map((s) => ({ ...s }));
+  students.sort((a, b) => {
+    const marksA = parseFloat(a.marks ?? 0);
+    const marksB = parseFloat(b.marks ?? 0);
+    if (marksB !== marksA) return marksB - marksA;
+
+    const rankA = parseInt(a.rank ?? 999999, 10);
+    const rankB = parseInt(b.rank ?? 999999, 10);
+    if (rankA !== rankB) return rankA - rankB;
+
+    const serialA = parseInt(a.serialNo ?? 999999, 10);
+    const serialB = parseInt(b.serialNo ?? 999999, 10);
+    return serialA - serialB;
+  });
+
+  const allocatedStudentIds = new Set();
+  let seatsRemaining = totalSeats;
+
+  function assignSeat(student, enumCategory, note = null) {
+    if (seatsRemaining <= 0) return false;
+
+    const room = pickRoomForStudent(roomStates, student);
+    if (!room) return false;
+
+    student.allotedCategory = enumCategory;
+    student.status = 'Allocated';
+    student.finalStatus = note ? `Hostel Allotted (${note})` : 'Hostel Allotted';
+    student.roomId = room.id;
+
+    occupyRoom(room, student);
+    allocatedStudentIds.add(student.id);
+    seatsRemaining -= 1;
+    return true;
+  }
+
+  const aiurSeats = Math.floor(totalSeats * 0.05);
+  const stateSeats = totalSeats - aiurSeats;
+
+  let genSeats = Math.round(stateSeats * 0.5);
+  let scSeats = Math.round(stateSeats * 0.16);
+  let stSeats = Math.round(stateSeats * 0.2);
+  let obcSeats = Math.round(stateSeats * 0.14);
+
+  const totalCalculated = genSeats + scSeats + stSeats + obcSeats;
+  if (totalCalculated !== stateSeats) {
+    genSeats += stateSeats - totalCalculated;
+  }
+
+  const seatsMatrix = {
+    AIUR: aiurSeats,
+    [Category.GENERAL]: genSeats,
+    [Category.SC]: scSeats,
+    [Category.ST]: stSeats,
+    [Category.OBC]: obcSeats,
+  };
+
+  // PHASE 1: AIUR Quota (5%)
+  for (const student of students) {
+    if (seatsMatrix.AIUR <= 0 || seatsRemaining <= 0) break;
+    if (!allocatedStudentIds.has(student.id) && student.homeState && student.homeState !== 'MP') {
+      if (assignSeat(student, Category.GENERAL, 'AIUR Quota')) {
+        seatsMatrix.AIUR -= 1;
+      }
     }
+  }
 
-    const totalRooms = roomsList.length;
-    
-    // RETURN AN EMPTY ARRAY IF NO ROOMS
-    if (totalRooms === 0) return []; 
+  if (seatsMatrix.AIUR > 0) {
+    seatsMatrix[Category.GENERAL] += seatsMatrix.AIUR;
+    seatsMatrix.AIUR = 0;
+  }
 
-    // Shallow copy and sort students by Merit
-    const students = studentsList.map(s => ({ ...s }));
-    students.sort((a, b) => {
-        const marksA = parseFloat(a.marks ?? 0);
-        const marksB = parseFloat(b.marks ?? 0);
-        if (marksB !== marksA) return marksB - marksA;
+  // PHASE 2: General / Open Merit (50%)
+  for (const student of students) {
+    if (seatsMatrix[Category.GENERAL] <= 0 || seatsRemaining <= 0) break;
+    if (allocatedStudentIds.has(student.id)) continue;
 
-        const rankA = parseInt(a.rank ?? 999999, 10);
-        const rankB = parseInt(b.rank ?? 999999, 10);
-        return rankA - rankB;
-    });
-
-    let roomIndex = 0;
-    const allocatedStudentIds = new Set();
-
-    function assignRoom(student, enumCategory, note = null) {
-        const room = roomsList[roomIndex++];
-        
-        student.allotedCategory = enumCategory;
-        student.status = 'Allocated';
-        student.finalStatus = note ? `Hostel Allotted (${note})` : 'Hostel Allotted';
-        
-        // RE-ADDED: We must attach roomId to the student so the controller can find it
-        student.roomId = room.id; 
-
-        allocatedStudentIds.add(student.id);
+    if (assignSeat(student, Category.GENERAL, 'Open Merit')) {
+      seatsMatrix[Category.GENERAL] -= 1;
     }
+  }
 
-    // -------------------------------------------------------------
-    // Calculate Quotas across total rooms
-    // -------------------------------------------------------------
-    const aiurRooms = Math.floor(totalRooms * 0.05);
-    const stateRooms = totalRooms - aiurRooms;
-
-    let genRooms = Math.round(stateRooms * 0.50);
-    let scRooms = Math.round(stateRooms * 0.16);
-    let stRooms = Math.round(stateRooms * 0.20);
-    let obcRooms = Math.round(stateRooms * 0.14);
-
-    // Adjust for rounding discrepancy
-    const totalCalculated = genRooms + scRooms + stRooms + obcRooms;
-    if (totalCalculated !== stateRooms) {
-        genRooms += (stateRooms - totalCalculated);
-    }
-
-    const seatsMatrix = {
-        AIUR: aiurRooms,
-        [Category.GENERAL]: genRooms,
-        [Category.SC]: scRooms,
-        [Category.ST]: stRooms,
-        [Category.OBC]: obcRooms
-    };
-
-    // -------------------------------------------------------------
-    // PHASE 1: AIUR Quota (5%)
-    // -------------------------------------------------------------
+  // PHASE 3: Reserved Categories
+  [Category.SC, Category.ST, Category.OBC].forEach((catEnum) => {
     for (const student of students) {
-        if (seatsMatrix.AIUR <= 0 || roomIndex >= totalRooms) break;
-        if (!allocatedStudentIds.has(student.id) && student.homeState && student.homeState !== 'MP') {
-            assignRoom(student, Category.GENERAL, 'AIUR Quota');
-            seatsMatrix.AIUR--;
+      if (seatsMatrix[catEnum] <= 0 || seatsRemaining <= 0) break;
+      if (allocatedStudentIds.has(student.id)) continue;
+
+      if (normalizeCategory(student.eligibleCategory) === catEnum) {
+        if (assignSeat(student, catEnum)) {
+          seatsMatrix[catEnum] -= 1;
         }
+      }
     }
+  });
 
-    // Transfer unfilled AIUR to GENERAL pool
-    if (seatsMatrix.AIUR > 0) {
-        seatsMatrix[Category.GENERAL] += seatsMatrix.AIUR;
-        seatsMatrix.AIUR = 0;
-    }
+  // PHASE 4: Redistribution of vacant reserved seats
+  const redistributionPreferences = {
+    [Category.ST]: [Category.SC, Category.OBC, Category.GENERAL],
+    [Category.SC]: [Category.ST, Category.OBC, Category.GENERAL],
+    [Category.OBC]: [Category.SC, Category.ST, Category.GENERAL],
+  };
 
-    // -------------------------------------------------------------
-    // PHASE 2: General / Open Merit (50%)
-    // -------------------------------------------------------------
-    for (const student of students) {
-        if (seatsMatrix[Category.GENERAL] <= 0 || roomIndex >= totalRooms) break;
-        if (allocatedStudentIds.has(student.id)) continue;
+  Object.keys(redistributionPreferences).forEach((reservedCat) => {
+    while (seatsMatrix[reservedCat] > 0 && seatsRemaining > 0) {
+      let seatFilled = false;
 
-        assignRoom(student, Category.GENERAL, 'Open Merit');
-        seatsMatrix[Category.GENERAL]--;
-    }
-
-    // -------------------------------------------------------------
-    // PHASE 3: Reserved Categories (SC 16%, ST 20%, OBC 14%)
-    // -------------------------------------------------------------
-    [Category.SC, Category.ST, Category.OBC].forEach(catEnum => {
+      for (const fallbackCat of redistributionPreferences[reservedCat]) {
         for (const student of students) {
-            if (seatsMatrix[catEnum] <= 0 || roomIndex >= totalRooms) break;
-            if (allocatedStudentIds.has(student.id)) continue;
+          if (allocatedStudentIds.has(student.id)) continue;
 
-            if (normalizeCategory(student.eligibleCategory) === catEnum) {
-                assignRoom(student, catEnum);
-                seatsMatrix[catEnum]--;
+          const normCat = normalizeCategory(student.eligibleCategory);
+          if (fallbackCat === Category.GENERAL || normCat === fallbackCat) {
+            if (assignSeat(student, fallbackCat, `${reservedCat} Shifted to ${normCat}`)) {
+              seatsMatrix[reservedCat] -= 1;
+              seatFilled = true;
+              break;
             }
+          }
         }
-    });
+        if (seatFilled) break;
+      }
 
-    // -------------------------------------------------------------
-    // PHASE 4: Redistribution of Vacant Reserved Seats
-    // -------------------------------------------------------------
-    const redistributionPreferences = {
-        [Category.ST]: [Category.SC, Category.OBC, Category.GENERAL],
-        [Category.SC]: [Category.ST, Category.OBC, Category.GENERAL],
-        [Category.OBC]: [Category.SC, Category.ST, Category.GENERAL]
-    };
+      if (!seatFilled) break;
+    }
+  });
 
-    Object.keys(redistributionPreferences).forEach(reservedCat => {
-        while (seatsMatrix[reservedCat] > 0 && roomIndex < totalRooms) {
-            let seatFilled = false;
-
-            for (const fallbackCat of redistributionPreferences[reservedCat]) {
-                for (const student of students) {
-                    if (allocatedStudentIds.has(student.id)) continue;
-
-                    const normCat = normalizeCategory(student.eligibleCategory);
-                    if (fallbackCat === Category.GENERAL || normCat === fallbackCat) {
-                        assignRoom(student, fallbackCat, `${reservedCat} Shifted to ${normCat}`);
-                        seatsMatrix[reservedCat]--;
-                        seatFilled = true;
-                        break;
-                    }
-                }
-                if (seatFilled) break;
-            }
-
-            if (!seatFilled) break;
-        }
-    });
-
-    // ONLY RETURN THE ARRAY OF STUDENTS
-    const allocatedStudents = students.filter(s => allocatedStudentIds.has(s.id));
-    return allocatedStudents; 
+  return students.filter((student) => allocatedStudentIds.has(student.id));
 }
 
-export { allocateHostelSeats, normalizeCategory };
+export { allocateHostelSeats, normalizeCategory, BEDS_PER_ROOM };

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, CheckCircle2, Clock, Building2, UploadCloud, 
-  FileSpreadsheet, Download, Save, RefreshCw, AlertCircle, Info, Check, ShieldCheck, Loader2
+import {
+  Users, CheckCircle2, Clock, Building2, UploadCloud,
+  FileSpreadsheet, Save, RefreshCw, AlertCircle, Check, ShieldCheck, Loader2
 } from 'lucide-react';
+import { fetchJson } from '../lib/api';
+import { useAdminMetrics } from '../context/AdminMetricsContext';
 
 const HOSTEL_DISPLAY_MAP = {
   'MALE-H1': { name: 'Boys Hostel 1 (Tagore Hall)', capacity: 200, warden: 'Dr. R. K. Sharma', phone: '+91 98765 43210' },
@@ -20,66 +22,55 @@ const HOSTEL_DISPLAY_MAP = {
   'FEMALE-H3': { name: 'Girls Hostel 3 (Sarojini House)', capacity: 250, warden: 'Dr. Ananya Mukherjee', phone: '+91 98765 43220' },
 };
 
-export default function DashboardView({ 
-  metrics, 
-  hostelsData, 
-  setHostelsData, 
-  excelUploads, 
-  setExcelUploads,
-  refreshData
-}) {
-  const [selectedGenderTab, setSelectedGenderTab] = useState('boys'); // 'boys' or 'girls'
+export default function DashboardView() {
+  const { metrics, isLoading: metricsLoading, refresh: refreshMetrics } = useAdminMetrics();
+
+  const [selectedGenderTab, setSelectedGenderTab] = useState('boys');
   const [hostelFormState, setHostelFormState] = useState({ boysHostels: [], girlsHostels: [] });
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [isLoadingInventory, setIsLoadingInventory] = useState(true);
   const [inventoryErrorMsg, setInventoryErrorMsg] = useState('');
-  
-  // Excel File Upload State
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState('');
   const [uploadErrorMsg, setUploadErrorMsg] = useState('');
+  const [excelUploads, setExcelUploads] = useState([]);
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-  // ── Fetch hostel inventory from backend ──
   const fetchInventory = async () => {
     setIsLoadingInventory(true);
     setInventoryErrorMsg('');
     try {
-      const response = await fetch(`${apiBaseUrl}/api/admin/inventory`);
-      if (!response.ok) throw new Error('Failed to fetch hostel inventory');
-      const resData = await response.json();
+      const resData = await fetchJson('/api/admin/inventory');
 
-      const mapHostels = (hostels, gender) => hostels.map(h => {
-        const displayKey = `${gender}-${h.hostelNumber}`;
-        const display = HOSTEL_DISPLAY_MAP[displayKey] || {};
-        return {
-          id: h.id,
-          code: h.hostelNumber,
-          name: display.name || `${gender === 'MALE' ? 'Boys' : 'Girls'} Hostel ${h.hostelNumber}`,
-          totalRooms: h.totalRooms,
-          emptyRooms: h.emptyRooms,
-          capacity: display.capacity || h.totalRooms * 2,
-          occupied: h.occupiedRooms,
-          warden: display.warden || '—',
-          phone: display.phone || '—',
-          isActive: h.isActive,
-        };
-      });
+      const mapHostels = (hostels, gender) =>
+        hostels.map((h) => {
+          const displayKey = `${gender}-${h.hostelNumber}`;
+          const display = HOSTEL_DISPLAY_MAP[displayKey] || {};
+          return {
+            id: h.id,
+            code: h.hostelNumber,
+            name: display.name || `${gender === 'MALE' ? 'Boys' : 'Girls'} Hostel ${h.hostelNumber}`,
+            totalRooms: h.totalRooms,
+            emptyRooms: h.emptyRooms,
+            capacity: display.capacity || h.totalRooms * 2,
+            occupied: h.occupiedRooms,
+            warden: display.warden || '—',
+            phone: display.phone || '—',
+            isActive: h.isActive,
+          };
+        });
 
-      const boys = mapHostels(resData.data.boysHostels, 'MALE');
-      const girls = mapHostels(resData.data.girlsHostels, 'FEMALE');
-
-      const inventoryData = { boysHostels: boys, girlsHostels: girls };
+      const inventoryData = {
+        boysHostels: mapHostels(resData.data.boysHostels, 'MALE'),
+        girlsHostels: mapHostels(resData.data.girlsHostels, 'FEMALE'),
+      };
       setHostelFormState(inventoryData);
-      setHostelsData(inventoryData);
     } catch (err) {
       console.error('Inventory fetch error:', err);
-      setInventoryErrorMsg('Failed to load hostel data from server. Showing fallback data.');
-      setHostelFormState(hostelsData);
+      setInventoryErrorMsg('Failed to load hostel data from server.');
     } finally {
       setIsLoadingInventory(false);
     }
@@ -89,17 +80,16 @@ export default function DashboardView({
     fetchInventory();
   }, []);
 
-  // Handle active status toggle
   const handleActiveToggle = (gender, hostelId) => {
     const key = gender === 'boys' ? 'boysHostels' : 'girlsHostels';
-    
-    setHostelFormState(prev => ({
+    setHostelFormState((prev) => ({
       ...prev,
-      [key]: prev[key].map(h => h.id === hostelId ? { ...h, isActive: !h.isActive } : h)
+      [key]: prev[key].map((h) =>
+        h.id === hostelId ? { ...h, isActive: !h.isActive } : h
+      ),
     }));
   };
 
-  // Save Hostel Room Data to backend
   const handleSaveHostelRooms = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -108,30 +98,21 @@ export default function DashboardView({
 
     try {
       const allHostels = [
-        ...hostelFormState.boysHostels.map(h => ({ id: h.id, isActive: h.isActive })),
-        ...hostelFormState.girlsHostels.map(h => ({ id: h.id, isActive: h.isActive })),
+        ...hostelFormState.boysHostels.map((h) => ({ id: h.id, isActive: h.isActive })),
+        ...hostelFormState.girlsHostels.map((h) => ({ id: h.id, isActive: h.isActive })),
       ];
 
-      const response = await fetch(`${apiBaseUrl}/api/admin/inventory`, {
+      const data = await fetchJson('/api/admin/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hostels: allHostels }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to save hostel room data');
-      }
-
-      setSaveSuccessMsg('Selected hostels marked as empty/active successfully!');
-      
-      // Re-fetch to get fresh counts
+      setSaveSuccessMsg(data.message || 'Selected hostels marked as empty/active successfully!');
       await fetchInventory();
-
+      await refreshMetrics();
       setTimeout(() => setSaveSuccessMsg(''), 4000);
     } catch (error) {
-      console.error('Save error:', error);
       setSaveErrorMsg(error.message || 'Failed to save hostel room data.');
       setTimeout(() => setSaveErrorMsg(''), 5000);
     } finally {
@@ -139,14 +120,10 @@ export default function DashboardView({
     }
   };
 
-  // Handle Excel File Drop/Select
   const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) setSelectedFile(e.target.files[0]);
   };
 
-  // Handle Excel Submit
   const handleExcelSubmit = async (e) => {
     e.preventDefault();
     if (!selectedFile) return;
@@ -159,38 +136,27 @@ export default function DashboardView({
       const formData = new FormData();
       formData.append('csvFile', selectedFile);
 
-      const response = await fetch(`${apiBaseUrl}/api/admin/admission-data`, {
-        method: 'POST',
-        body: formData,
-      });
-
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/admin/admission-data`,
+        { method: 'POST', body: formData }
+      );
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload admission data');
-      }
+      if (!response.ok) throw new Error(data.message || 'Failed to upload admission data');
 
       const newRecord = {
         id: `ex-${Date.now()}`,
         fileName: selectedFile.name,
         uploadDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
         totalRows: data.recordsInserted || 0,
-        verifiedRows: data.recordsInserted || 0,
         status: 'Completed',
-        uploadedBy: 'Chief Warden (Admin)'
       };
 
-      setExcelUploads([newRecord, ...excelUploads]);
+      setExcelUploads((prev) => [newRecord, ...prev]);
       setSelectedFile(null);
-      setUploadSuccessMsg(data.message || `Admission file "${newRecord.fileName}" uploaded and processed successfully!`);
-      
-      if (refreshData) {
-        await refreshData();
-      }
-
+      setUploadSuccessMsg(data.message || `Admission file "${newRecord.fileName}" uploaded successfully!`);
+      await refreshMetrics();
       setTimeout(() => setUploadSuccessMsg(''), 5000);
     } catch (error) {
-      console.error('Upload Error:', error);
       setUploadErrorMsg(error.message || 'Failed to upload admission data.');
       setTimeout(() => setUploadErrorMsg(''), 6000);
     } finally {
@@ -198,12 +164,73 @@ export default function DashboardView({
     }
   };
 
-  const totalBoysRooms = hostelFormState.boysHostels.reduce((acc, curr) => acc + (parseInt(curr.totalRooms) || 0), 0);
-  const totalGirlsRooms = hostelFormState.girlsHostels.reduce((acc, curr) => acc + (parseInt(curr.totalRooms) || 0), 0);
+  const totalBoysRooms = hostelFormState.boysHostels.reduce(
+    (acc, curr) => acc + (parseInt(curr.totalRooms, 10) || 0), 0
+  );
+  const totalGirlsRooms = hostelFormState.girlsHostels.reduce(
+    (acc, curr) => acc + (parseInt(curr.totalRooms, 10) || 0), 0
+  );
+
+  const renderHostelTable = (hostels, gender, label, headerClass) => (
+    <div>
+      <div className={`text-xs font-bold text-slate-700 mb-3 ${headerClass} p-2 rounded flex justify-between items-center`}>
+        <span>{label}</span>
+        <span className="text-[11px] text-slate-500 font-normal">
+          Select which hostels are empty/available for allotment below
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left border-collapse border border-slate-300">
+          <thead className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+            <tr>
+              <th className="p-2.5 border-r border-slate-300">Select</th>
+              <th className="p-2.5 border-r border-slate-300">Code</th>
+              <th className="p-2.5 border-r border-slate-300">Hostel Name & Block</th>
+              <th className="p-2.5 border-r border-slate-300">Total Rooms</th>
+              <th className="p-2.5 border-r border-slate-300">Occupied Rooms</th>
+              <th className="p-2.5 border-r border-slate-300 text-emerald-800 bg-emerald-50">Empty Rooms</th>
+              <th className="p-2.5">Warden / Contact</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-300">
+            {hostels.map((hostel, index) => (
+              <tr key={hostel.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50 hover:bg-amber-50/50'}>
+                <td className="p-2.5 border-r border-slate-300 text-center">
+                  <input
+                    type="checkbox"
+                    checked={hostel.isActive || false}
+                    onChange={() => handleActiveToggle(gender, hostel.id)}
+                    className="w-4 h-4 rounded text-[#0f2c59] focus:ring-[#0f2c59] border-slate-300 cursor-pointer"
+                  />
+                </td>
+                <td className="p-2.5 font-bold text-[#0f2c59] border-r border-slate-300">
+                  <span className="px-2 py-0.5 bg-[#0f2c59] text-white rounded text-[11px]">{hostel.code}</span>
+                </td>
+                <td className="p-2.5 font-semibold text-slate-900 border-r border-slate-300">{hostel.name}</td>
+                <td className="p-2.5 border-r border-slate-300 text-slate-700">{hostel.totalRooms} rooms</td>
+                <td className="p-2.5 border-r border-slate-300 text-slate-700">
+                  {hostel.isActive ? '0 (Marked Empty)' : `${hostel.occupied} students`}
+                </td>
+                <td className="p-2.5 border-r border-slate-300 bg-emerald-50/50">
+                  <span className="font-bold text-emerald-700">
+                    {hostel.isActive ? hostel.totalRooms : hostel.totalRooms - hostel.occupied}
+                  </span>
+                  <span className="text-[11px] text-slate-500 ml-1">rooms</span>
+                </td>
+                <td className="p-2.5 text-slate-600">
+                  <div>{hostel.warden}</div>
+                  <div className="text-[10px] text-slate-400">{hostel.phone}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* METRIC CARDS */}
       <div>
         <div className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2 border-b border-slate-300 pb-1.5">
           <ShieldCheck className="w-4 h-4 text-[#0f2c59]" />
@@ -211,79 +238,45 @@ export default function DashboardView({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="gov-card p-4 border-l-4 border-l-[#0f2c59] flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Students Filled Form
+          {[
+            { label: 'Students Filled Form', value: metrics.totalStudentsFilled, sub: 'Total Online Applications', icon: Users, color: 'border-l-[#0f2c59]', iconBg: 'bg-slate-100 border-slate-300 text-[#0f2c59]' },
+            { label: 'Verified Students', value: metrics.totalVerifiedStudents, sub: 'Ready for Hostel Allotment', icon: CheckCircle2, color: 'border-l-emerald-600', iconBg: 'bg-emerald-50 border-emerald-300 text-emerald-700', textColor: 'text-emerald-700', valueColor: 'text-emerald-800' },
+            { label: 'Pending Verification', value: metrics.totalPendingVerification, sub: 'Documents Under Review', icon: Clock, color: 'border-l-amber-600', iconBg: 'bg-amber-50 border-amber-300 text-amber-700', textColor: 'text-amber-800', valueColor: 'text-amber-900' },
+          ].map(({ label, value, sub, icon: Icon, color, iconBg, textColor, valueColor }) => (
+            <div key={label} className={`gov-card p-4 border-l-4 ${color} flex items-center justify-between`}>
+              <div>
+                <div className={`text-xs font-semibold uppercase tracking-wider ${textColor || 'text-slate-500'}`}>{label}</div>
+                <div className={`text-2xl font-bold mt-1 ${valueColor || 'text-slate-900'}`}>
+                  {metricsLoading ? '…' : value.toLocaleString('en-IN')}
+                </div>
+                <div className={`text-[11px] mt-1 ${textColor ? textColor.replace('800', '600').replace('700', '600') : 'text-slate-500'}`}>{sub}</div>
               </div>
-              <div className="text-2xl font-bold text-slate-900 mt-1">
-                {metrics.totalStudentsFilled.toLocaleString('en-IN')}
+              <div className={`w-12 h-12 rounded border flex items-center justify-center ${iconBg}`}>
+                <Icon className="w-6 h-6" />
               </div>
-              <div className="text-[11px] text-slate-500 mt-1">Total Online Applications</div>
             </div>
-            <div className="w-12 h-12 rounded bg-slate-100 border border-slate-300 flex items-center justify-center text-[#0f2c59]">
-              <Users className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="gov-card p-4 border-l-4 border-l-emerald-600 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
-                Verified Students
-              </div>
-              <div className="text-2xl font-bold text-emerald-800 mt-1">
-                {metrics.totalVerifiedStudents.toLocaleString('en-IN')}
-              </div>
-              <div className="text-[11px] text-emerald-600 mt-1">Ready for Hostel Allotment</div>
-            </div>
-            <div className="w-12 h-12 rounded bg-emerald-50 border border-emerald-300 flex items-center justify-center text-emerald-700">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="gov-card p-4 border-l-4 border-l-amber-600 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
-                Pending Verification
-              </div>
-              <div className="text-2xl font-bold text-amber-900 mt-1">
-                {metrics.totalPendingVerification.toLocaleString('en-IN')}
-              </div>
-              <div className="text-[11px] text-amber-700 mt-1">Documents Under Review</div>
-            </div>
-            <div className="w-12 h-12 rounded bg-amber-50 border border-amber-300 flex items-center justify-center text-amber-700">
-              <Clock className="w-6 h-6" />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* SECTION B: HOSTEL ROOM AVAILABILITY DATA ENTRY FORM */}
       <div className="gov-card overflow-hidden">
-        {/* Header */}
         <div className="bg-[#0b2545] text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#1e3a8a]">
-          <div>
-            <h2 className="text-sm md:text-base font-bold flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-amber-400" />
-                 Hostel Wise Empty Status & Allotment Selection
-            </h2>
-          </div>
-
+          <h2 className="text-sm md:text-base font-bold flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-amber-400" />
+            Hostel Wise Empty Status & Allotment Selection
+          </h2>
           {saveSuccessMsg && (
             <div className="px-3 py-1 bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1.5 animate-pulse">
-              <Check className="w-4 h-4" />
-              {saveSuccessMsg}
+              <Check className="w-4 h-4" /> {saveSuccessMsg}
             </div>
           )}
           {saveErrorMsg && (
             <div className="px-3 py-1 bg-rose-700 text-white rounded text-xs font-semibold flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4" />
-              {saveErrorMsg}
+              <AlertCircle className="w-4 h-4" /> {saveErrorMsg}
             </div>
           )}
         </div>
 
-        {/* Gender Tabs */}
         <div className="bg-slate-100 border-b border-slate-300 p-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
@@ -297,7 +290,6 @@ export default function DashboardView({
             >
               Boys Hostels (H1 - H8) — {totalBoysRooms} Total Rooms
             </button>
-
             <button
               type="button"
               onClick={() => setSelectedGenderTab('girls')}
@@ -310,7 +302,6 @@ export default function DashboardView({
               Girls Hostels (H1 - H3) — {totalGirlsRooms} Total Rooms
             </button>
           </div>
-
           <button
             type="button"
             onClick={fetchInventory}
@@ -324,8 +315,7 @@ export default function DashboardView({
 
         {inventoryErrorMsg && (
           <div className="mx-4 mt-3 p-2 bg-amber-50 border border-amber-300 text-amber-800 rounded text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            {inventoryErrorMsg}
+            <AlertCircle className="w-4 h-4" /> {inventoryErrorMsg}
           </div>
         )}
 
@@ -336,126 +326,9 @@ export default function DashboardView({
           </div>
         ) : (
           <form onSubmit={handleSaveHostelRooms} className="p-4">
-            {selectedGenderTab === 'boys' ? (
-              <div>
-                <div className="text-xs font-bold text-slate-700 mb-3 bg-blue-50 border border-blue-200 p-2 rounded flex justify-between items-center">
-                  <span>Boys Hostels List (H1 - H8)</span>
-                  <span className="text-[11px] text-slate-500 font-normal">Select which hostels are empty/available for allotment below</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse border border-slate-300">
-                    <thead className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
-                      <tr>
-                        <th className="p-2.5 border-r border-slate-300">Select</th>
-                        <th className="p-2.5 border-r border-slate-300">Code</th>
-                        <th className="p-2.5 border-r border-slate-300">Hostel Name & Block</th>
-                        <th className="p-2.5 border-r border-slate-300">Total Rooms</th>
-                        <th className="p-2.5 border-r border-slate-300">Occupied Rooms</th>
-                        <th className="p-2.5 border-r border-slate-300 text-emerald-800 bg-emerald-50">Empty Rooms</th>
-                        <th className="p-2.5">Warden / Contact</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-300">
-                      {hostelFormState.boysHostels.map((hostel, index) => (
-                        <tr key={hostel.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50 hover:bg-amber-50/50'}>
-                          <td className="p-2.5 border-r border-slate-300 text-center">
-                            <input
-                              type="checkbox"
-                              checked={hostel.isActive || false}
-                              onChange={() => handleActiveToggle('boys', hostel.id)}
-                              className="w-4 h-4 rounded text-[#0f2c59] focus:ring-[#0f2c59] border-slate-300 cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-2.5 font-bold text-[#0f2c59] border-r border-slate-300">
-                            <span className="px-2 py-0.5 bg-[#0f2c59] text-white rounded text-[11px]">
-                              {hostel.code}
-                            </span>
-                          </td>
-                          <td className="p-2.5 font-semibold text-slate-900 border-r border-slate-300">
-                            {hostel.name}
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 text-slate-700">
-                            {hostel.totalRooms} rooms
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 text-slate-700">
-                            {hostel.isActive ? '0 (Marked Empty)' : `${hostel.occupied} students`}
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 bg-emerald-50/50">
-                            <span className="font-bold text-emerald-700">{hostel.isActive ? hostel.totalRooms : (hostel.totalRooms - hostel.occupied)}</span>
-                            <span className="text-[11px] text-slate-500 ml-1">rooms</span>
-                          </td>
-                          <td className="p-2.5 text-slate-600">
-                            <div>{hostel.warden}</div>
-                            <div className="text-[10px] text-slate-400">{hostel.phone}</div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="text-xs font-bold text-slate-700 mb-3 bg-pink-50 border border-pink-200 p-2 rounded flex justify-between items-center">
-                  <span>Girls Hostels List (H1 - H3)</span>
-                  <span className="text-[11px] text-slate-500 font-normal">Select which hostels are empty/available for allotment below</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse border border-slate-300">
-                    <thead className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
-                      <tr>
-                        <th className="p-2.5 border-r border-slate-300">Select</th>
-                        <th className="p-2.5 border-r border-slate-300">Code</th>
-                        <th className="p-2.5 border-r border-slate-300">Hostel Name & Block</th>
-                        <th className="p-2.5 border-r border-slate-300">Total Rooms</th>
-                        <th className="p-2.5 border-r border-slate-300">Occupied Rooms</th>
-                        <th className="p-2.5 border-r border-slate-300 text-emerald-800 bg-emerald-50">Empty Rooms</th>
-                        <th className="p-2.5">Warden / Contact</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-300">
-                      {hostelFormState.girlsHostels.map((hostel, index) => (
-                        <tr key={hostel.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50 hover:bg-amber-50/50'}>
-                          <td className="p-2.5 border-r border-slate-300 text-center">
-                            <input
-                              type="checkbox"
-                              checked={hostel.isActive || false}
-                              onChange={() => handleActiveToggle('girls', hostel.id)}
-                              className="w-4 h-4 rounded text-[#0f2c59] focus:ring-[#0f2c59] border-slate-300 cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-2.5 font-bold text-[#0f2c59] border-r border-slate-300">
-                            <span className="px-2 py-0.5 bg-[#0f2c59] text-white rounded text-[11px]">
-                              {hostel.code}
-                            </span>
-                          </td>
-                          <td className="p-2.5 font-semibold text-slate-900 border-r border-slate-300">
-                            {hostel.name}
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 text-slate-700">
-                            {hostel.totalRooms} rooms
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 text-slate-700">
-                            {hostel.isActive ? '0 (Marked Empty)' : `${hostel.occupied} students`}
-                          </td>
-                          <td className="p-2.5 border-r border-slate-300 bg-emerald-50/50">
-                            <span className="font-bold text-emerald-700">{hostel.isActive ? hostel.totalRooms : (hostel.totalRooms - hostel.occupied)}</span>
-                            <span className="text-[11px] text-slate-500 ml-1">rooms</span>
-                          </td>
-                          <td className="p-2.5 text-slate-600">
-                            <div>{hostel.warden}</div>
-                            <div className="text-[10px] text-slate-400">{hostel.phone}</div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
+            {selectedGenderTab === 'boys'
+              ? renderHostelTable(hostelFormState.boysHostels, 'boys', 'Boys Hostels List (H1 - H8)', 'bg-blue-50 border border-blue-200')
+              : renderHostelTable(hostelFormState.girlsHostels, 'girls', 'Girls Hostels List (H1 - H3)', 'bg-pink-50 border border-pink-200')}
             <div className="mt-4 pt-3 border-t border-slate-300 flex justify-end gap-3">
               <button
                 type="submit"
@@ -466,89 +339,62 @@ export default function DashboardView({
                     : 'bg-[#166534] hover:bg-[#14532d] text-white border-[#14532d]'
                 }`}
               >
-                {isSaving ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Active Status to Database
-                  </>
-                )}
+                {isSaving ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Active Status to Database</>}
               </button>
             </div>
           </form>
         )}
       </div>
 
-      {/* SECTION C: ADMISSION DATA SUBMISSION */}
       <div className="gov-card overflow-hidden">
         <div className="bg-[#0b2545] text-white px-4 py-3 border-b border-[#1e3a8a]">
           <h2 className="text-sm md:text-base font-bold flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-amber-400" />
-             Admission Data Submission (Excel Format)
+            Admission Data Submission (Excel Format)
           </h2>
         </div>
-
         <div className="p-4 space-y-6">
           {uploadSuccessMsg && (
             <div className="p-3 bg-emerald-100 border border-emerald-400 text-emerald-800 rounded text-xs font-bold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-              {uploadSuccessMsg}
+              <CheckCircle2 className="w-4 h-4 text-emerald-700" /> {uploadSuccessMsg}
             </div>
           )}
-
           {uploadErrorMsg && (
             <div className="p-3 bg-rose-100 border border-rose-400 text-rose-800 rounded text-xs font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-700" />
-              {uploadErrorMsg}
+              <AlertCircle className="w-4 h-4 text-rose-700" /> {uploadErrorMsg}
             </div>
           )}
-
-          <div>
-            <form onSubmit={handleExcelSubmit} className="space-y-4">
-              <div className="border-2 border-dashed border-slate-400 rounded-md p-6 bg-slate-50 text-center hover:bg-slate-100/80 transition-colors">
-                <UploadCloud className="w-10 h-10 text-[#0f2c59] mx-auto mb-2" />
-                <div className="text-sm font-bold text-slate-800">
-                  Select or Drag Admission Excel File (.xlsx / .csv)
-                </div>
-                <div className="mt-4 flex flex-wrap justify-center items-center gap-3">
-                  <label className="cursor-pointer px-4 py-2 bg-[#0f2c59] hover:bg-[#1e3a8a] text-white rounded text-xs font-semibold shadow-sm inline-flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-amber-400" />
-                    Browse Computer Files
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls, .csv"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {selectedFile && (
-                  <div className="mt-4 p-2 bg-amber-50 border border-amber-300 rounded inline-block text-xs font-semibold text-amber-900">
-                    Selected File: <span className="font-bold underline">{selectedFile.name}</span>
-                  </div>
-                )}
+          <form onSubmit={handleExcelSubmit} className="space-y-4">
+            <div className="border-2 border-dashed border-slate-400 rounded-md p-6 bg-slate-50 text-center hover:bg-slate-100/80 transition-colors">
+              <UploadCloud className="w-10 h-10 text-[#0f2c59] mx-auto mb-2" />
+              <div className="text-sm font-bold text-slate-800">Select or Drag Admission Excel File (.xlsx / .csv)</div>
+              <div className="mt-4 flex flex-wrap justify-center items-center gap-3">
+                <label className="cursor-pointer px-4 py-2 bg-[#0f2c59] hover:bg-[#1e3a8a] text-white rounded text-xs font-semibold shadow-sm inline-flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-amber-400" />
+                  Browse Computer Files
+                  <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileSelect} className="hidden" />
+                </label>
               </div>
-
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={!selectedFile || isUploading}
-                  className={`px-5 py-2 text-xs font-bold rounded border flex items-center gap-2 shadow-sm ${
-                    !selectedFile || isUploading
-                      ? 'bg-slate-300 text-slate-500 border-slate-300 cursor-not-allowed'
-                      : 'bg-[#ea580c] hover:bg-[#c2410c] text-white border-[#c2410c]'
-                  }`}
-                >
-                  {isUploading ? 'Processing...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
+              {selectedFile && (
+                <div className="mt-4 p-2 bg-amber-50 border border-amber-300 rounded inline-block text-xs font-semibold text-amber-900">
+                  Selected File: <span className="font-bold underline">{selectedFile.name}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={!selectedFile || isUploading}
+                className={`px-5 py-2 text-xs font-bold rounded border flex items-center gap-2 shadow-sm ${
+                  !selectedFile || isUploading
+                    ? 'bg-slate-300 text-slate-500 border-slate-300 cursor-not-allowed'
+                    : 'bg-[#ea580c] hover:bg-[#c2410c] text-white border-[#c2410c]'
+                }`}
+              >
+                {isUploading ? 'Processing...' : 'Submit'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
