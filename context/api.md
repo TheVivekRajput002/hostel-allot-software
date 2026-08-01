@@ -23,3 +23,5 @@ GET    /api/v1/admin/allotment/{gender}
 send email for form submitted succesfully
 POST   /api/v1/notifications/acknowledgement
 
+delete all generated student list
+DELETE /api/admin/deletegeneratedList
