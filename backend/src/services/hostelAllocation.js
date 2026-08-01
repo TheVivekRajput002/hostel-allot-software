@@ -25,7 +25,9 @@ function allocateHostelSeats(studentsList, roomsList) {
     }
 
     const totalRooms = roomsList.length;
-    if (totalRooms === 0) return { allocatedStudents: [], allotmentRecords: [] };
+    
+    // RETURN AN EMPTY ARRAY IF NO ROOMS
+    if (totalRooms === 0) return []; 
 
     // Shallow copy and sort students by Merit
     const students = studentsList.map(s => ({ ...s }));
@@ -41,7 +43,6 @@ function allocateHostelSeats(studentsList, roomsList) {
 
     let roomIndex = 0;
     const allocatedStudentIds = new Set();
-    const allotmentRecords = [];
 
     function assignRoom(student, enumCategory, note = null) {
         const room = roomsList[roomIndex++];
@@ -49,12 +50,11 @@ function allocateHostelSeats(studentsList, roomsList) {
         student.allotedCategory = enumCategory;
         student.status = 'Allocated';
         student.finalStatus = note ? `Hostel Allotted (${note})` : 'Hostel Allotted';
+        
+        // RE-ADDED: We must attach roomId to the student so the controller can find it
+        student.roomId = room.id; 
 
         allocatedStudentIds.add(student.id);
-        allotmentRecords.push({
-            studentId: student.id,
-            roomId: room.id
-        });
     }
 
     // -------------------------------------------------------------
@@ -157,12 +157,9 @@ function allocateHostelSeats(studentsList, roomsList) {
         }
     });
 
+    // ONLY RETURN THE ARRAY OF STUDENTS
     const allocatedStudents = students.filter(s => allocatedStudentIds.has(s.id));
-
-    return {
-        allocatedStudents,
-        allotmentRecords
-    };
+    return allocatedStudents; 
 }
 
 export { allocateHostelSeats, normalizeCategory };
