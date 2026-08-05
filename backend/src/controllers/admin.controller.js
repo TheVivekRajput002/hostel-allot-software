@@ -120,6 +120,7 @@ export const uploadAdmissionData = async (req, res) => {
 export const runVerification = async (req, res) => {
   try {
     const forms = await prisma.hostelForm.findMany();
+    
     const rollNumbers = forms.map((form) => form.jeeRollNumber);
 
     const students = rollNumbers.length
@@ -127,7 +128,7 @@ export const runVerification = async (req, res) => {
           where: { rollNo: { in: rollNumbers } },
         })
       : [];
-
+    
     const studentMap = {};
     students.forEach((student) => {
       studentMap[student.rollNo] = student;
@@ -151,7 +152,10 @@ export const runVerification = async (req, res) => {
             verificationReason: isVerified ? null : formatVerificationReasons(reasons),
           },
         });
-      })
+      }),{
+        maxWait:5000,
+        timeout:10000
+      }
     );
 
     return res.status(200).json({
@@ -352,6 +356,7 @@ export const getHostelInventory = async (req, res) => {
 export const updateHostelInventory = async (req, res) => {
   try {
     const { hostels } = req.body;
+    
     // hostels: [{ id: hostelId, isActive: boolean }]
 
     if (!hostels || !Array.isArray(hostels)) {
