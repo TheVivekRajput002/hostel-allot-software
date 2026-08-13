@@ -10,6 +10,7 @@ import {
 import { repairSingleOccupancyRooms } from '../services/roomPairing.service.js'
 import { BEDS_PER_ROOM } from '../services/hostelAllocation.js'
 import { sendUnverifiedEmail } from '../services/notifications.service.js';
+import { assignStudentHostelIds } from '../services/shId.service.js';
 
 
 const getRowVal = (row, possibleKeys) => {
@@ -255,6 +256,7 @@ export const getAllotedStudentsByGender = async (req, res) => {
               name: true,
               eligibleCategory: true,
               gender: true,
+              shId: true,
             },
           },
           room: {
@@ -466,13 +468,25 @@ export const allotmentRun = async (req, res) => {
     const allocatedFemaleSeats = allocateHostelSeats(studentFemale, availableFemaleRooms);
 
     const allotmentsToCreate = [];
-    for (const student of [...allocatedMaleSeats, ...allocatedFemaleSeats]) {
+    const newlyAllottedStudents = [...allocatedMaleSeats, ...allocatedFemaleSeats];
+
+    for (const student of newlyAllottedStudents) {
       if (student.roomId) {
         allotmentsToCreate.push({
           studentId: student.id,
           roomId: student.roomId,
         });
       }
+    }
+
+    if (newlyAllottedStudents.length > 0) {
+      const rollToYearMap = {};
+      for (const form of verifiedForms) {
+        if (form.jeeRollNumber && form.admissionYear) {
+          rollToYearMap[form.jeeRollNumber] = form.admissionYear;
+        }
+      }
+      await assignStudentHostelIds(newlyAllottedStudents, rollToYearMap);
     }
 
     if (allotmentsToCreate.length > 0) {

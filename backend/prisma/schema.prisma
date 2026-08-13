@@ -49,6 +49,7 @@ model Student {
   id               String    @id @default(uuid())
   serialNo         Int?
   rollNo           String    @unique
+  shId             String?   @unique
   name             String
   eligibleCategory Category?
   allotedCategory  Category

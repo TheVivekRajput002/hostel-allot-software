@@ -66,6 +66,9 @@ export default function StudentDetailModal({ student, onClose, onUpdateStudent }
               <h3 className="text-lg font-bold text-slate-900 mt-0.5">{student.name}</h3>
               <div className="text-slate-600 mt-1 flex flex-wrap items-center gap-4 text-xs">
                 <span>Roll No: <strong className="text-slate-900">{student.rollNo}</strong></span>
+                {student.shId && (
+                  <span>Hostel ID: <strong className="text-[#b45309] font-extrabold">{student.shId}</strong></span>
+                )}
                 <span>Gender: <strong>{student.gender}</strong></span>
                 <span>Category: <strong>{student.category}</strong></span>
               </div>

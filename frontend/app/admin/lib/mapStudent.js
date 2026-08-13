@@ -42,6 +42,7 @@ export function mapFormToStudent(student) {
     phone: studentInfo
       ? studentInfo.phoneNo || student.mobileNumber
       : student.mobileNumber,
+    shId: studentInfo?.shId || null,
     documents: {
       aadhaar: true,
       admissionLetter: true,

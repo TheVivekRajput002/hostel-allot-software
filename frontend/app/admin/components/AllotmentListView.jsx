@@ -181,7 +181,7 @@ export default function AllotmentListView() {
           <table className="w-full text-xs text-left border-collapse">
             <thead>
               <tr className="border-b-2 border-slate-300 text-slate-700 font-bold bg-slate-100">
-                <th className="py-3 px-3">Roll No</th>
+                <th className="py-3 px-3">Student Hostel ID</th>
                 <th className="py-3 px-3">Name</th>
                 <th className="py-3 px-3">Category</th>
                 <th className="py-3 px-3">Hostel</th>
@@ -192,7 +192,7 @@ export default function AllotmentListView() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 6 }).map((__, j) => (
                       <td key={j} className="py-2.5 px-3">
                         <div className="h-3 bg-slate-200 rounded w-full" />
                       </td>
@@ -201,7 +201,7 @@ export default function AllotmentListView() {
                 ))
               ) : allotments.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500 font-semibold">
+                  <td colSpan="6" className="py-8 text-center text-slate-500 font-semibold">
                     No allotment records found.
                   </td>
                 </tr>
@@ -212,7 +212,8 @@ export default function AllotmentListView() {
                   const hostel = room.hostel || {};
                   return (
                     <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-semibold text-slate-800">{student.rollNo}</td>
+                      
+                      <td className="py-2.5 px-3 font-semibold text-[#b45309]">{student.shId || '—'}</td>
                       <td className="py-2.5 px-3 font-semibold text-[#0f2c59]">{student.name}</td>
                       <td className="py-2.5 px-3">
                         <span className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-bold text-slate-700">
