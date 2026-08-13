@@ -7,6 +7,8 @@ const normalizeName = (name) =>
 const isCancelled = (finalStatus) =>
   String(finalStatus || '').trim().toLowerCase() === 'cancelled';
 
+const cleanPhone = (phone) => String(phone || '').replace(/\D/g, '');
+
 /**
  * Compare a hostel form against the matched admission (student) record.
  * Returns whether the form passes all checks and a list of human-readable failure reasons.
@@ -15,46 +17,44 @@ export function evaluateHostelFormVerification(form, student) {
   const reasons = [];
 
   if (!student) {
-    reasons.push('Roll number not found in official admission records.');
+    reasons.push('roll number not found');
     return { isVerified: false, reasons };
   }
 
   if (isCancelled(student.finalStatus)) {
-    reasons.push('Admission record is marked as cancelled.');
+    reasons.push('admission cancelled');
   }
 
   if (normalizeName(form.fullName) !== normalizeName(student.name)) {
-    reasons.push(
-      `Name mismatch: form has "${form.fullName}", admission has "${student.name}".`
-    );
+    reasons.push('name not matched');
   }
 
   if (form.gender !== student.gender) {
-    reasons.push(
-      `Gender mismatch: form has "${form.gender}", admission has "${student.gender}".`
-    );
+    reasons.push('gender not matched');
   }
 
   if (form.category !== student.allotedCategory) {
-    reasons.push(
-      `Category mismatch: form has "${form.category}", admission has "${student.allotedCategory}".`
-    );
+    reasons.push('category not matched');
+  }
+
+  if (cleanPhone(form.mobileNumber) !== cleanPhone(student.phoneNo)) {
+    reasons.push('phone number not matched');
+  }
+
+  if (normalizeName(form.homeState) !== normalizeName(student.domicileStatus)) {
+    reasons.push('home state not matched');
   }
 
   if (student.marks == null) {
-    reasons.push('Marks missing in admission record.');
+    reasons.push('marks missing');
   }
 
   if (student.rank == null) {
-    reasons.push('Rank missing in admission record.');
-  }
-
-  if (!String(student.phoneNo || '').trim()) {
-    reasons.push('Phone number missing in admission record.');
+    reasons.push('crl rank not matched');
   }
   
   return {
-    isVerified: true,
+    isVerified: reasons.length === 0,
     reasons,
   };
 }

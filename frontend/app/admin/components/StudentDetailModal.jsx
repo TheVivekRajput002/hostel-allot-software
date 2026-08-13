@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 
 export default function StudentDetailModal({ student, onClose, onUpdateStudent }) {
-  if (!student) return null;
-
-  const [currentStatus, setCurrentStatus] = useState(student.status);
-  const [docs, setDocs] = useState({ ...student.documents });
+  const [currentStatus, setCurrentStatus] = useState(student?.status);
+  const [docs, setDocs] = useState(student?.documents ? { ...student.documents } : {});
   const [successMsg, setSuccessMsg] = useState('');
+
+  if (!student) return null;
 
   const toggleDoc = (docKey) => {
     setDocs(prev => ({ ...prev, [docKey]: !prev[docKey] }));

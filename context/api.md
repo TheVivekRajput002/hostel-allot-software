@@ -14,6 +14,9 @@ POST   /api/admin/admission-data
 verification of student form with admission data
 POST   /api/admin/verification/run
 
+send emails to unverified students
+POST   /api/admin/send-unverified-emails
+
 take empty hostel rooms data
 POST   /api/admin/inventory/
 

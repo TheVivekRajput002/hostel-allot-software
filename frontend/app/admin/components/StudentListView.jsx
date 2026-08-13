@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   Search, Filter, CheckCircle2, Clock, ShieldAlert, ShieldCheck,
-  User, MapPin, GraduationCap, Award, Eye, RotateCcw,
+  User, MapPin, GraduationCap, Award, Eye, RotateCcw, Loader2, Mail,
 } from 'lucide-react';
 import { fetchJson } from '../lib/api';
 import { useStudentList } from '../hooks/useStudentList';
 import Pagination from './Pagination';
 import PendingReasonInfo from './PendingReasonInfo';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 function StudentCardSkeleton() {
   return (
@@ -34,6 +34,7 @@ export default function StudentListView({ onSelectStudent, onDataChange }) {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [genderFilter, setGenderFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -66,7 +67,24 @@ export default function StudentListView({ onSelectStudent, onDataChange }) {
     setPage(1);
   };
 
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
+
+  const handleSendEmailsToUnverified = async () => {
+    if (isSendingEmails) return;
+    setIsSendingEmails(true);
+    try {
+      const result = await fetchJson('/api/admin/send-unverified-emails', { method: 'POST' });
+      alert(result.message || `Emails sent: ${result.sentCount}, Failed: ${result.failedCount}`);
+    } catch (err) {
+      alert(err.message || 'Error while sending emails.');
+    } finally {
+      setIsSendingEmails(false);
+    }
+  };
+
   const handleSendForVerification = async () => {
+    if (isVerifying) return;
+    setIsVerifying(true);
     try {
       const result = await fetchJson('/api/admin/verification/run', { method: 'POST' });
       alert(`Verification Completed: ${result.verifiedCount} verified, ${result.unverifiedCount} unverified.`);
@@ -74,6 +92,8 @@ export default function StudentListView({ onSelectStudent, onDataChange }) {
       onDataChange?.();
     } catch (err) {
       alert(err.message || 'Error while running verification.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -306,14 +326,51 @@ export default function StudentListView({ onSelectStudent, onDataChange }) {
         </>
       )}
 
-      <div className="mt-4 flex justify-center">
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
         <button
           type="button"
           onClick={handleSendForVerification}
-          className="w-72 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0f2c59] hover:bg-[#163d78] text-white font-bold rounded-lg shadow-md transition-all"
+          disabled={isVerifying}
+          className={`w-72 inline-flex items-center justify-center gap-2 px-6 py-3 font-bold rounded-lg shadow-md transition-all ${
+            isVerifying
+              ? 'bg-[#0f2c59]/75 text-white/80 cursor-not-allowed animate-pulse'
+              : 'bg-[#0f2c59] hover:bg-[#163d78] text-white'
+          }`}
         >
-          <ShieldCheck className="w-5 h-5" />
-          Send For Verification
+          {isVerifying ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin text-amber-400" />
+              <span>Verifying Applications...</span>
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="w-5 h-5" />
+              <span>Send For Verification</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSendEmailsToUnverified}
+          disabled={isSendingEmails}
+          className={`w-72 inline-flex items-center justify-center gap-2 px-6 py-3 font-bold rounded-lg shadow-md transition-all ${
+            isSendingEmails
+              ? 'bg-[#b91c1c]/75 text-white/80 cursor-not-allowed animate-pulse'
+              : 'bg-[#b91c1c] hover:bg-[#991b1b] text-white'
+          }`}
+        >
+          {isSendingEmails ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <span>Sending Emails...</span>
+            </>
+          ) : (
+            <>
+              <Mail className="w-5 h-5" />
+              <span className='text-xs'>Send Emails to Unverified Students</span>
+            </>
+          )}
         </button>
       </div>
     </div>

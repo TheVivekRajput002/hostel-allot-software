@@ -9,6 +9,8 @@ import {
 } from '../services/verification.service.js'
 import { repairSingleOccupancyRooms } from '../services/roomPairing.service.js'
 import { BEDS_PER_ROOM } from '../services/hostelAllocation.js'
+import { sendUnverifiedEmail } from '../services/notifications.service.js';
+
 
 const getRowVal = (row, possibleKeys) => {
   for (const k of Object.keys(row)) {
@@ -19,6 +21,7 @@ const getRowVal = (row, possibleKeys) => {
   }
   return undefined;
 };
+
 
 const normalizeCategory = (cat) => {
   if (!cat) return null;
@@ -137,7 +140,7 @@ export const runVerification = async (req, res) => {
     let verifiedCount = 0;
     let unverifiedCount = 0;
 
-    await prisma.$transaction(
+    await Promise.all(
       forms.map((form) => {
         const student = studentMap[form.jeeRollNumber] || null;
         const { isVerified, reasons } = evaluateHostelFormVerification(form, student);
@@ -152,10 +155,7 @@ export const runVerification = async (req, res) => {
             verificationReason: isVerified ? null : formatVerificationReasons(reasons),
           },
         });
-      }),{
-        maxWait:5000,
-        timeout:10000
-      }
+      })
     );
 
     return res.status(200).json({
@@ -253,8 +253,7 @@ export const getAllotedStudentsByGender = async (req, res) => {
             select: {
               rollNo: true,
               name: true,
-              rank: true,
-              allotedCategory: true,
+              eligibleCategory: true,
               gender: true,
             },
           },
@@ -502,4 +501,46 @@ export const allotmentRun = async (req, res) => {
   }
 };
 
+export const sendUnverifiedEmails = async (req, res) => {
+  try {
+    const unverifiedForms = await prisma.hostelForm.findMany({
+      where: { isVerified: false },
+    });
+
+    if (unverifiedForms.length === 0) {
+      return res.status(200).json({
+        message: 'No unverified student forms found.',
+        sentCount: 0,
+        failedCount: 0,
+      });
+    }
+
+    const results = await Promise.all(
+      unverifiedForms.map(async (form) => {
+        try {
+          const info = await sendUnverifiedEmail(form.email, form.fullName, form.verificationReason);
+          return { email: form.email, success: !!info };
+        } catch (err) {
+          console.error(`Error sending email to ${form.email}:`, err);
+          return { email: form.email, success: false };
+        }
+      })
+    );
+
+    const sentCount = results.filter(r => r.success).length;
+    const failedCount = results.length - sentCount;
+
+    return res.status(200).json({
+      message: `Email sending process completed. Sent: ${sentCount}, Failed: ${failedCount}`,
+      sentCount,
+      failedCount,
+    });
+  } catch (error) {
+    console.error('Send Unverified Emails Error:', error);
+    return res.status(500).json({
+      message: 'Failed to send emails to unverified students.',
+      error: error.message,
+    });
+  }
+};
 
