@@ -14,6 +14,10 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "JEC hostel allotment software",
   description: "jec jabalpur hostel allotment form",
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }) {

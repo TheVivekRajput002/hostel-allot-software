@@ -9,20 +9,22 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-  className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white"
->
-  <img
-    src="/jec_logo.png"
-    alt="College Logo"
-    className="w-8 h-8 object-contain"
-  />
-</div>
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white"
+            >
+              <img
+                src="/jec_logo.png"
+                alt="College Logo"
+                className="w-8 h-8 object-contain"
+              />
+            </div>
             <div>
               <span className="font-bold text-base tracking-tight block" style={{ color: 'var(--text-main)' }}>
                 Hostel Allotment Portal
               </span>
               <span className="text-xs block" style={{ color: 'var(--text-muted)' }}>
-                Student Application Module
+                <h1>JEC Jabalpur Hostel Allotment Form</h1>
+
+          
               </span>
             </div>
           </div>
