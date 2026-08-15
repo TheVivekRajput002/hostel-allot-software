@@ -1,5 +1,6 @@
 import prisma from '../db/db.js';
 import csv from 'csv-parser';
+import PDFDocument from 'pdfkit';
 import { Readable } from 'stream';
 import xlsx from 'xlsx';
 import { allocateHostelSeats } from '../services/hostelAllocation.js'
@@ -248,7 +249,7 @@ export const getAllotedStudentsByGender = async (req, res) => {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { student: { shId: 'asc' } },
         include: {
           student: {
             select: {
@@ -290,6 +291,307 @@ export const getAllotedStudentsByGender = async (req, res) => {
     });
   }
 };
+
+export const downloadAllotedStudentsByGender = async (req, res) => {
+  try {
+    const { gender } = req.params;
+    const normalizedGender = gender ? gender.toUpperCase() : '';
+
+    if (!['MALE', 'FEMALE'].includes(normalizedGender)) {
+      return res.status(400).json({
+        message: 'Invalid gender parameter. Must be MALE or FEMALE.',
+      });
+    }
+
+    const allotmentList = await prisma.hostelAllotmentList.findMany({
+      where: {
+        student: { gender: normalizedGender },
+      },
+      include: {
+        student: {
+          select: {
+            rollNo: true,
+            name: true,
+            eligibleCategory: true,
+            allotedCategory: true,
+            gender: true,
+            shId: true,
+            rank: true,
+            phoneNo: true,
+            fatherName: true,
+            motherName: true,
+            domicileStatus: true,
+          },
+        },
+        room: {
+          select: {
+            roomNumber: true,
+            hostel: {
+              select: { hostelNumber: true },
+            },
+          },
+        },
+      },
+    });
+
+    const parseShId = (shId) => {
+      if (!shId) return { year: 999999, num: 999999, raw: '' };
+      const str = String(shId).trim();
+      const parts = str.split('-');
+      if (parts.length >= 3) {
+        const year = parseInt(parts[1], 10) || 0;
+        const num = parseInt(parts[2], 10) || 0;
+        return { year, num, raw: str };
+      }
+      const match = str.match(/\d+/g);
+      if (match) {
+        return { year: 0, num: parseInt(match[match.length - 1], 10) || 0, raw: str };
+      }
+      return { year: 0, num: 0, raw: str };
+    };
+
+    allotmentList.sort((a, b) => {
+      const shIdA = a.student?.shId;
+      const shIdB = b.student?.shId;
+      if (!shIdA && !shIdB) return 0;
+      if (!shIdA) return 1;
+      if (!shIdB) return -1;
+
+      const parsedA = parseShId(shIdA);
+      const parsedB = parseShId(shIdB);
+
+      if (parsedA.year !== parsedB.year) {
+        return parsedA.year - parsedB.year;
+      }
+      if (parsedA.num !== parsedB.num) {
+        return parsedA.num - parsedB.num;
+      }
+      return parsedA.raw.localeCompare(parsedB.raw, undefined, { numeric: true });
+    });
+
+    const exportRows = allotmentList.map((item, index) => {
+      const student = item.student || {};
+      const room = item.room || {};
+      const hostel = room.hostel || {};
+
+      return {
+        'S.No': index + 1,
+        'Student Hostel ID': student.shId || 'N/A',
+        'JEE Roll No': student.rollNo || 'N/A',
+        'Student Name': student.name || 'N/A',
+        'Gender': student.gender || normalizedGender,
+        'Eligible Category': student.eligibleCategory || 'N/A',
+        'Allotted Category': student.allotedCategory || 'N/A',
+        'Hostel': hostel.hostelNumber ? `Hostel ${hostel.hostelNumber}` : 'N/A',
+        'Room No': room.roomNumber || 'N/A',
+        'JEE Rank': student.rank ?? 'N/A',
+        'Mobile No': student.phoneNo || 'N/A',
+        'Home State': student.domicileStatus || 'N/A',
+      };
+    });
+
+    const worksheet = xlsx.utils.json_to_sheet(exportRows);
+
+    worksheet['!cols'] = [
+      { wch: 8 },  // S.No
+      { wch: 24 }, // Student Hostel ID
+      { wch: 18 }, // JEE Roll No
+      { wch: 28 }, // Student Name
+      { wch: 10 }, // Gender
+      { wch: 18 }, // Eligible Category
+      { wch: 18 }, // Allotted Category
+      { wch: 16 }, // Hostel
+      { wch: 12 }, // Room No
+      { wch: 12 }, // JEE Rank
+      { wch: 16 }, // Mobile No
+      { wch: 18 }, // Home State
+    ];
+
+    const sheetTitle = normalizedGender === 'MALE' ? 'Boys_Hostel_Allotment' : 'Girls_Hostel_Allotment';
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, sheetTitle);
+
+    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const fileName = `${normalizedGender === 'MALE' ? 'Boys' : 'Girls'}_Hostel_Allotment_List.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error('Download Alloted Students Error:', error);
+    return res.status(500).json({
+      message: 'Failed to download allotted student list.',
+      error: error.message,
+    });
+  }
+};
+
+export const downloadAllotedStudentsPdfByGender = async (req, res) => {
+  try {
+    const { gender } = req.params;
+    const normalizedGender = gender ? gender.toUpperCase() : '';
+
+    if (!['MALE', 'FEMALE'].includes(normalizedGender)) {
+      return res.status(400).json({
+        message: 'Invalid gender parameter. Must be MALE or FEMALE.',
+      });
+    }
+
+    const allotmentList = await prisma.hostelAllotmentList.findMany({
+      where: {
+        student: { gender: normalizedGender },
+      },
+      include: {
+        student: {
+          select: {
+            shId: true,
+            name: true,
+            eligibleCategory: true,
+            gender: true,
+          },
+        },
+        room: {
+          select: {
+            roomNumber: true,
+            hostel: {
+              select: { hostelNumber: true },
+            },
+          },
+        },
+      },
+    });
+
+    const parseShId = (shId) => {
+      if (!shId) return { year: 999999, num: 999999, raw: '' };
+      const str = String(shId).trim();
+      const parts = str.split('-');
+      if (parts.length >= 3) {
+        const year = parseInt(parts[1], 10) || 0;
+        const num = parseInt(parts[2], 10) || 0;
+        return { year, num, raw: str };
+      }
+      const match = str.match(/\d+/g);
+      if (match) {
+        return { year: 0, num: parseInt(match[match.length - 1], 10) || 0, raw: str };
+      }
+      return { year: 0, num: 0, raw: str };
+    };
+
+    allotmentList.sort((a, b) => {
+      const shIdA = a.student?.shId;
+      const shIdB = b.student?.shId;
+      if (!shIdA && !shIdB) return 0;
+      if (!shIdA) return 1;
+      if (!shIdB) return -1;
+
+      const parsedA = parseShId(shIdA);
+      const parsedB = parseShId(shIdB);
+
+      if (parsedA.year !== parsedB.year) {
+        return parsedA.year - parsedB.year;
+      }
+      if (parsedA.num !== parsedB.num) {
+        return parsedA.num - parsedB.num;
+      }
+      return parsedA.raw.localeCompare(parsedB.raw, undefined, { numeric: true });
+    });
+
+    const doc = new PDFDocument({ margin: 30, size: 'A4' });
+    const buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => {
+      const pdfData = Buffer.concat(buffers);
+      const fileName = `${normalizedGender === 'MALE' ? 'Boys' : 'Girls'}_Hostel_Allotment_List.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(pdfData);
+    });
+
+    const headers = ['Student Hostel ID', 'Name', 'Category', 'Hostel', 'Room'];
+    const columnWidths = [120, 160, 80, 100, 65]; 
+    const startX = 30;
+
+    const drawHeader = () => {
+      doc.fontSize(14).font('Helvetica-Bold').text(`${normalizedGender === 'MALE' ? 'Boys' : 'Girls'} Hostel Allotment List`, startX, doc.y, { align: 'center' });
+      doc.moveDown(1.5);
+      
+      // Draw Table Header
+      let currentY = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      let currentX = startX;
+      headers.forEach((h, i) => {
+        doc.text(h, currentX, currentY, { width: columnWidths[i], align: 'left' });
+        currentX += columnWidths[i];
+      });
+      
+      // Draw a line under header
+      doc.moveTo(startX, currentY + doc.currentLineHeight() + 3)
+         .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY + doc.currentLineHeight() + 3)
+         .stroke();
+         
+      doc.y = currentY + doc.currentLineHeight() + 10;
+    };
+
+    drawHeader();
+    doc.font('Helvetica');
+
+    allotmentList.forEach((item) => {
+      const student = item.student || {};
+      const room = item.room || {};
+      const hostel = room.hostel || {};
+      const rowVals = [
+        student.shId || '—',
+        student.name || '—',
+        student.eligibleCategory || '—',
+        hostel.hostelNumber ? `Hostel ${hostel.hostelNumber}` : '—',
+        room.roomNumber || '—'
+      ];
+
+      // Calculate max lines in this row to see height
+      let maxLines = 1;
+      rowVals.forEach((val, idx) => {
+        const textHeight = doc.heightOfString(String(val), { width: columnWidths[idx] });
+        const lines = Math.ceil(textHeight / doc.currentLineHeight());
+        if (lines > maxLines) maxLines = lines;
+      });
+
+      const rowHeight = (maxLines * doc.currentLineHeight()) + 8;
+
+      // Page break check
+      if (doc.y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage();
+        drawHeader();
+        doc.font('Helvetica');
+      }
+
+      let currentY = doc.y;
+      let currentX = startX;
+      doc.fontSize(9);
+      rowVals.forEach((val, idx) => {
+        doc.text(String(val), currentX, currentY, { width: columnWidths[idx], align: 'left' });
+        currentX += columnWidths[idx];
+      });
+
+      // Draw subtle bottom line for each row
+      doc.moveTo(startX, currentY + rowHeight - 2)
+         .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY + rowHeight - 2)
+         .strokeColor('#e2e8f0')
+         .lineWidth(0.5)
+         .stroke();
+
+      doc.y = currentY + rowHeight;
+    });
+
+    doc.end();
+  } catch (error) {
+    console.error('Download PDF Alloted Students Error:', error);
+    return res.status(500).json({
+      message: 'Failed to download allotted student list as PDF.',
+      error: error.message,
+    });
+  }
+};
+
 
 // ─── INVENTORY: Get all hostels with room counts ───
 export const getHostelInventory = async (req, res) => {

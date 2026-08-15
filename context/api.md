@@ -26,3 +26,9 @@ POST   /api/admin/allotment/run
 fetch all allotted students list
 GET    /api/admin/allotment/{gender}
 
+download allotted students list (Excel)
+GET    /api/admin/allotment/{gender}/download
+
+download allotted students list (PDF)
+GET    /api/admin/allotment/{gender}/download/pdf
+

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Building2, FileText, RefreshCw, AlertCircle, CheckCircle2, Loader2, Search,
+  Building2, FileText, RefreshCw, AlertCircle, CheckCircle2, Loader2, Search, Download,
 } from 'lucide-react';
-import { fetchJson } from '../lib/api';
+import { API_BASE, fetchJson } from '../lib/api';
 import { useAllotments } from '../hooks/useAllotments';
 import { useAdminMetrics } from '../context/AdminMetricsContext';
 import Pagination from './Pagination';
@@ -19,6 +19,8 @@ export default function AllotmentListView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('xlsx');
+  const [isDownloading, setIsDownloading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -69,7 +71,47 @@ export default function AllotmentListView() {
     }
   };
 
+  const handleDownloadAllotment = async (targetGender, format = 'xlsx') => {
+    const selectedGender = targetGender || gender;
+    const genderLabel = selectedGender === 'MALE' ? 'Boys' : 'Girls';
+    setIsDownloading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const endpoint = format === 'pdf'
+        ? `${API_BASE}/api/admin/allotment/${selectedGender}/download/pdf`
+        : `${API_BASE}/api/admin/allotment/${selectedGender}/download`;
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to download ${genderLabel} allotment list.`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+      link.setAttribute('download', `${genderLabel}_Hostel_Allotment_List.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setSuccessMsg(`${genderLabel} Hostel Allotment List (${format.toUpperCase()}) downloaded successfully!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err) {
+      console.error('Download allotment error:', err);
+      setErrorMsg(err.message || `Failed to download ${genderLabel} allotment list.`);
+      setTimeout(() => setErrorMsg(''), 6000);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const displayError = errorMsg || error;
+  const currentCount = activeTab === 'boys' ? metrics.boysAllotted : metrics.girlsAllotted;
 
   return (
     <div className="space-y-6">
@@ -173,8 +215,30 @@ export default function AllotmentListView() {
       </div>
 
       <div className="gov-card p-5">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h3 className="font-bold text-[#0f2c59] capitalize">{activeTab} Allotment Details</h3>
+          <div className="flex items-center gap-2">
+            <select
+              value={downloadFormat}
+              onChange={(e) => setDownloadFormat(e.target.value)}
+              className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer transition-colors"
+            >
+              <option value="xlsx" className="text-slate-800 bg-white">Excel (.xlsx)</option>
+              <option value="pdf" className="text-slate-800 bg-white">PDF (.pdf)</option>
+            </select>
+            <button
+              onClick={() => handleDownloadAllotment(gender, downloadFormat)}
+              disabled={isDownloading || currentCount === 0}
+              className="px-3.5 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDownloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-emerald-700" />
+              )}
+              Download {activeTab === 'boys' ? 'Boys' : 'Girls'} {downloadFormat === 'xlsx' ? 'Excel' : 'PDF'}
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -212,7 +276,6 @@ export default function AllotmentListView() {
                   const hostel = room.hostel || {};
                   return (
                     <tr key={item.id} className="hover:bg-slate-50">
-                      
                       <td className="py-2.5 px-3 font-semibold text-[#b45309]">{student.shId || '—'}</td>
                       <td className="py-2.5 px-3 font-semibold text-[#0f2c59]">{student.name}</td>
                       <td className="py-2.5 px-3">
@@ -244,7 +307,39 @@ export default function AllotmentListView() {
         />
       </div>
 
-      <div className="flex justify-center pt-4">
+      <div className="flex flex-wrap justify-center items-center gap-4 pt-4">
+        <div className="flex items-center gap-2">
+          <select
+            value={downloadFormat}
+            onChange={(e) => setDownloadFormat(e.target.value)}
+            className="px-4 py-3.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-[#0f2c59] hover:bg-slate-50 cursor-pointer transition-colors"
+          >
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="pdf">PDF (.pdf)</option>
+          </select>
+          <button
+            onClick={() => handleDownloadAllotment(gender, downloadFormat)}
+            disabled={isDownloading || currentCount === 0}
+            className={`px-6 py-3.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors ${
+              isDownloading || currentCount === 0
+                ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                : 'bg-[#0f2c59] hover:bg-[#1e3a8a] text-white border border-[#0f2c59]'
+            }`}
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Downloading {activeTab === 'boys' ? 'Boys' : 'Girls'} {downloadFormat === 'xlsx' ? 'Excel' : 'PDF'} List...
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5 text-amber-400" />
+                Download {activeTab === 'boys' ? 'Boys' : 'Girls'} {downloadFormat === 'xlsx' ? 'Excel' : 'PDF'} List
+              </>
+            )}
+          </button>
+        </div>
+
         <button
           onClick={handleGenerateAllotment}
           disabled={isGenerating || isLoading}
@@ -270,3 +365,4 @@ export default function AllotmentListView() {
     </div>
   );
 }
+

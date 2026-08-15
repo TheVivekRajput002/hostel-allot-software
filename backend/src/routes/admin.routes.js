@@ -1,7 +1,7 @@
 
 import express from 'express'
 import multer from 'multer'
-import { uploadAdmissionData, runVerification, getAdminMetrics, getAllotedStudentsByGender, getHostelInventory, updateHostelInventory, sendUnverifiedEmails } from '../controllers/admin.controller.js'
+import { uploadAdmissionData, runVerification, getAdminMetrics, getAllotedStudentsByGender, downloadAllotedStudentsByGender, downloadAllotedStudentsPdfByGender, getHostelInventory, updateHostelInventory, sendUnverifiedEmails } from '../controllers/admin.controller.js'
 import { allotmentRun } from '../controllers/admin.controller.js'
 
 const upload = multer({ storage: multer.memoryStorage() })
@@ -13,6 +13,8 @@ router.post('/admission-data', upload.single('csvFile'), uploadAdmissionData)
 router.post('/verification/run', runVerification)
 router.post('/send-unverified-emails', sendUnverifiedEmails)
 router.get('/allotment/:gender', getAllotedStudentsByGender)
+router.get('/allotment/:gender/download', downloadAllotedStudentsByGender);
+router.get('/allotment/:gender/download/pdf', downloadAllotedStudentsPdfByGender);
 router.get('/inventory', getHostelInventory)
 router.post('/inventory', updateHostelInventory)
 
